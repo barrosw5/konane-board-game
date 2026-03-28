@@ -3,10 +3,10 @@
 object GameLogic {
     
     // T1: Gerar jogada aleatória
-    /*def randomMove(lstOpenCoords: List[Coord2D], rand: MyRandom): (Coord2D, MyRandom) = {
-        
-    }*/
-
+    def randomMove(lstOpenCoords: List[Coord2D], rand: MyRandom): (Coord2D, MyRandom) = {
+        val (num, nextRandom) = rand.nextInt(lstOpenCoords.length)
+        (lstOpenCoords(num), nextRandom)
+    }
 
     // T2: Move a peça e devolve o tabuleiro e a lista das pos válidas
     /*def play(board:Board, player: Stone, coordFrom:Coord2D,coordTo:Coord2D,lstOpenCoords:List[Coord2D]):(Option[Board],List[Coord2D]):(Option[Board], List[Coord2D]) {
