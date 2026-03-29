@@ -22,7 +22,7 @@ object GameLogic {
         val middle = size / 2
         val openMap = initMap - ((middle - 1, middle - 1)) - ((middle - 1, middle))
         
-        openMap.par
+        openMap
     }
     
     // T1: Gerar jogada aleatória
