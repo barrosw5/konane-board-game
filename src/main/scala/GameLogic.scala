@@ -84,9 +84,16 @@ object GameLogic {
         (lstOpenCoords(num), nextRandom)
     }
 
+
+    def getSize(board: Board, lstOpenCoords: List[Coord2D]): Int = {
+        val total = board.size + lstOpenCoords.size
+        val size = math.sqrt(total).toInt
+        return size
+    }
+
     // T2: Move a peça e devolve o tabuleiro e a lista das pos válidas
-    /*def play(board:Board, player: Stone, coordFrom:Coord2D,coordTo:Coord2D,lstOpenCoords:List[Coord2D]):(Option[Board],List[Coord2D]):(Option[Board], List[Coord2D]) {
+    def play(board:Board, player: Stone, coordFrom:Coord2D,coordTo:Coord2D,lstOpenCoords:List[Coord2D]):(Option[Board],List[Coord2D]):(Option[Board], List[Coord2D]) {
+      
 
-
-    } */
+    }
 }
