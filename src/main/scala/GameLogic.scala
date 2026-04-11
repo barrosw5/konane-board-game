@@ -86,14 +86,56 @@ object GameLogic {
 
 
     def getSize(board: Board, lstOpenCoords: List[Coord2D]): Int = {
+        // Retorna o tamanho do tabuleiro. No fundo dá o tamanho do board (casas preenchidas) + as casas livres, na lista lstOpenCoords
         val total = board.size + lstOpenCoords.size
-        val size = math.sqrt(total).toInt
-        return size
+        math.sqrt(total).toInt
+    }
+
+    def isValidPlay(board: Board, player: Stone, from: Coord2D, to: Coord2D, size: Int): Boolean = {
+        board.get(from) match {
+            case Some(stone) if stone == player =>
+                val validMoves = getValidMovesForPiece(board, from, size)
+                validMoves.contains(to)
+            case _ =>
+                false
+        }
+    }
+
+    def middleCoord(from: Coord2D, to: Coord2D): Coord2D = {
+        // Retorna as coord da casa entre a casa de origem e do fim
+        val (fromRow, fromCol) = from
+        val (toRow, toCol) = to
+        val middleRow = ( fromRow + toRow ) / 2
+        val middleCol = ( fromCol + toCol ) /2
+        (middleRow, middleCol)
+    }
+
+    def updateOpenCoord(lstOpenCoords: List[Coord2D], from: Coord2D, to: Coord2D, captured: Coord2D): List[Coord2D] = {
+       // Atualiza a lista das pos vazias. Retira a de destino e acrescenta a de origem e capturada
+        val withOutTo = lstOpenCoords.filter (_ != to)
+        from :: captured :: withOutTo
+    }
+
+    def applyMove(board: Board, from: Coord2D, to: Coord2D, captured: Coord2D, player: Stone): Board = {
+        // Remove do Map e ao remover a chave do map está a colocar a Coordenada no tabuleiro vazia
+        val boardWithOutFrom = board - from
+        val boardWithOutCaptured = boardWithOutFrom - captured
+        // to -> player basicamente cria um par-chave para a Stone
+        boardWithOutCaptured + ( to -> player)
     }
 
     // T2: Move a peça e devolve o tabuleiro e a lista das pos válidas
-    def play(board:Board, player: Stone, coordFrom:Coord2D,coordTo:Coord2D,lstOpenCoords:List[Coord2D]):(Option[Board],List[Coord2D]):(Option[Board], List[Coord2D]) {
-      
+    def play(board:Board, player: Stone, coordFrom:Coord2D,coordTo:Coord2D,lstOpenCoords:List[Coord2D]):(Option[Board], List[Coord2D]) = {
+        val size = getSize(board, lstOpenCoords)
+        if (!isValidPlay(board, player, coordFrom, coordTo, size)) {
+            (None, lstOpenCoords)
+        }
+        else {
+            val captured = middleCoord(coordFrom, coordTo)
+            val newBoard = applyMove(board, coordFrom, coordTo, captured, player)
+            val newOpenLs = updateOpenCoord(lstOpenCoords, coordFrom, coordTo, captured)
 
+            (Some(newBoard), newOpenLs)
+        }
     }
 }
