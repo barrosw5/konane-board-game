@@ -144,12 +144,6 @@ object GameLogic {
                     r:MyRandom,
                     player:Stone,
                     lstOpenCoords:List[Coord2D],
-<<<<<<< Updated upstream
-                    f:(List[Coord2D],MyRandom)=>(Coord2D,MyRandom)):
-                    (Option[Board],MyRandom,List[Coord2D],Option[Coord2D]) = {
-        val (coord, nextR) = f(lstOpenCoords,MyRandom)
-        play(coord)
-=======
                     f:(List[Coord2D],MyRandom)=>(Coord2D,MyRandom)
                     ):(Option[Board],MyRandom,List[Coord2D],Option[Coord2D]) = {
         
@@ -168,7 +162,6 @@ object GameLogic {
             
             (newBoardOpt, r3, newOpenCoords, Some(toCoord))
         }
->>>>>>> Stashed changes
     }
 
 }
