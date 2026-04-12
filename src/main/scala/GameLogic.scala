@@ -144,10 +144,31 @@ object GameLogic {
                     r:MyRandom,
                     player:Stone,
                     lstOpenCoords:List[Coord2D],
+<<<<<<< Updated upstream
                     f:(List[Coord2D],MyRandom)=>(Coord2D,MyRandom)):
                     (Option[Board],MyRandom,List[Coord2D],Option[Coord2D]) = {
         val (coord, nextR) = f(lstOpenCoords,MyRandom)
         play(coord)
+=======
+                    f:(List[Coord2D],MyRandom)=>(Coord2D,MyRandom)
+                    ):(Option[Board],MyRandom,List[Coord2D],Option[Coord2D]) = {
+        
+        val size = getSize(board, lstOpenCoords)
+        val myPieces = board.filter { case (_, stone) => stone == player }.keys.toList
+        val piecesWithValidMoves = myPieces.filter(c => getValidMovesForPiece(board, c, size).nonEmpty)
+
+        if (piecesWithValidMoves.isEmpty) {
+            (None, r, lstOpenCoords, None)
+        } else {
+            val (fromCoord, r2) = f(piecesWithValidMoves, r)
+            val validDests = getValidMovesForPiece(board, fromCoord, size)
+            val (toCoord, r3) = f(validDests, r2)
+
+            val (newBoardOpt, newOpenCoords) = play(board, player, fromCoord, toCoord, lstOpenCoords)
+            
+            (newBoardOpt, r3, newOpenCoords, Some(toCoord))
+        }
+>>>>>>> Stashed changes
     }
 
 }
