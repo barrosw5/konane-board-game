@@ -31,11 +31,33 @@ object TUI {
         print("> ")
     }
     
+    def showValidMoves(moves: List[Coord2D]): Unit = {
+        println("\nValid destinations:")
+        
+        def listMoves(m: List[Coord2D], i: Int): Unit = m match {
+            case Nil => ()
+            case head :: tail =>
+                println(s"$i - $head")
+                listMoves(tail, i + 1)
+        }
+        
+        listMoves(moves, 1)
+        print("> Choose the move number: ")
+    }
+    
+    def showPlayerTurn(player: Stone): Unit = {
+        val name = player match {
+            case Stone.Black => "Black (B)"
+            case Stone.White => "White (W)"
+        }
+        println(s"\n>>> Current turn: $name")
+    }
+    
     def showGameMenuPrompt(): Unit = {
         println("-" * 24)
         println("----- In-Game Menu -----")
         println("-" * 24)
-        print("(c)heck valid moves, (r)andom move test, or (q)uit: ")
+        print("(p)lay, (m)achine random play, (c)heck moves, (r)andom test, or (q)uit: ")
     }
     
     def showCoordinatePrompt(axis: String): Unit = {
