@@ -181,19 +181,6 @@ object GameLogic {
         }
     }
     
-    
-    
-    // T3: Realizar uma jogada aleatória
-    /*def playRandomly(board:Board,
-                    r:MyRandom,
-                    player:Stone,
-                    lstOpenCoords:List[Coord2D],
-                    f:(List[Coord2D],MyRandom)=>(Coord2D,MyRandom)):
-                    (Option[Board],MyRandom,List[Coord2D],Option[Coord2D]) = {
-        val (coord, nextR) = f(lstOpenCoords,MyRandom)
-        play(coord)
-    }*/
-    
     def playRandomly(board: Board,
                      r: MyRandom,
                      player: Stone,
