@@ -70,7 +70,7 @@ object GameLogic {
                     }
                 }
                 
-                // Avalia as 4 direções recursivamente e junta todas as listas válidas (:::)
+                // Avalia as 4 direções recursivamente e junta todas as listas válidas (++)
                 def checkDirections(dirs: List[(Int, Int)]): List[Coord2D] = dirs match {
                     case Nil => Nil
                     case (dL, dC) :: tail =>
@@ -134,7 +134,7 @@ object GameLogic {
     
     def updateOpenCoord(lstOpenCoords: List[Coord2D], from: Coord2D, to: Coord2D, capturedList: List[Coord2D]): List[Coord2D] = {
         val withOutTo = lstOpenCoords.filter(_ != to)
-        // O operador ::: concatena a lista das peças capturadas com as posições livres
+        // O operador ++ concatena a lista das peças capturadas com as posições livres
         from :: (capturedList ++ withOutTo)
     }
 
