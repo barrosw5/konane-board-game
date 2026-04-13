@@ -57,7 +57,7 @@ object TUI {
         println("-" * 24)
         println("----- In-Game Menu -----")
         println("-" * 24)
-        print("(p)lay, (c)heck moves, (r)andom test, or (q)uit: ")
+        print("(p)lay, (m)achine random play, (c)heck moves, (r)andom test, or (q)uit: ")
     }
     
     def showCoordinatePrompt(axis: String): Unit = {

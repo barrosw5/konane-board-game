@@ -193,5 +193,43 @@ object GameLogic {
         val (coord, nextR) = f(lstOpenCoords,MyRandom)
         play(coord)
     }*/
+    
+    def playRandomly(board: Board,
+                     r: MyRandom,
+                     player: Stone,
+                     lstOpenCoords: List[Coord2D],
+                     f: (List[Coord2D], MyRandom) => (Coord2D, MyRandom)):
+    (Option[Board], MyRandom, List[Coord2D], Option[Coord2D]) = {
+        
+        val size = getSize(board, lstOpenCoords)
+        
+        // Descobrir todas as peças do jogador (converte o Map para List para usar os métodos)
+        val playerPieces = board.toList.filter { case (_, stone) => stone == player }.map(_._1)
+        
+        // Filtrar para manter apenas as peças que têm pelo menos um movimento válido
+        val piecesWithMoves = playerPieces.filter(coord => getValidMovesForPiece(board, coord, size).nonEmpty)
+        
+        piecesWithMoves match {
+            case Nil =>
+                // Se o jogador não tem peças com movimentos possíveis, não joga
+                (None, r, lstOpenCoords, None)
+            
+            case _ =>
+                // Usa a função f (randomMove) para escolher UMA PEÇA para mover
+                val (fromCoord, r1) = f(piecesWithMoves, r)
+                
+                // Descobre os destinos possíveis para a peça escolhida
+                val validMoves = getValidMovesForPiece(board, fromCoord, size)
+                
+                // Usa novamente a função f para escolher o destino
+                val (toCoord, r2) = f(validMoves, r1)
+                
+                // Aplica a jogada usando o método da T2
+                val (newBoardOpt, newOpen) = play(board, player, fromCoord, toCoord, lstOpenCoords)
+                
+                // Devolvemos o novo estado, a nova semente aleatória r2, as posições abertas e a casa de destino
+                (newBoardOpt, r2, newOpen, Some(toCoord))
+        }
+    }
 
 }

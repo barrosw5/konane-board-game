@@ -142,6 +142,23 @@ object Main extends App {
                         gameLoop(board, size, rand, openCoords, currentPlayer)
                 }
             
+            case "M" => // Machine play
+                // Chamada à função de ordem superior, passando a GameLogic.randomMove como o argumento 'f'
+                val (newBoardOpt, nextRand, newOpen, toOpt) = GameLogic.playRandomly(board, rand, currentPlayer, openCoords, GameLogic.randomMove)
+                
+                newBoardOpt match {
+                    case Some(nb) =>
+                        println(s"\n[Result] The computer randomly moved a piece to ${toOpt.get}!\n")
+                        val nextPlayer = if (currentPlayer == Stone.Black) Stone.White else Stone.Black
+                        // Atualiza o estado com o novo Random e o novo Board
+                        gameLoop(nb, size, nextRand, newOpen, nextPlayer)
+                    
+                    case None =>
+                        // Se o tabuleiro voltar None, significa que o jogador não tem mais jogadas válidas
+                        println("\n[Result] This player has no valid moves left. Game Over!\n")
+                        gameLoop(board, size, nextRand, openCoords, currentPlayer)
+                }
+            
             case "C" =>
                 TUI.showCoordinatePrompt("row")
                 val rowStr = TUI.getUserInput()
