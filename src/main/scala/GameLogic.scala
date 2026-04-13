@@ -1,3 +1,4 @@
+import scala.annotation.tailrec
 import scala.collection.parallel.ParMap
 
 // Fazer aqui T1, T2, T3, T5
@@ -35,7 +36,6 @@ object GameLogic {
     
     // Função que verifica as 4 direções possíveis para a peça numa dada coordenada
     def getValidMovesForPiece(board: Board, coord: Coord2D, size: Int): List[Coord2D] = {
-        
         board.get(coord) match {
             case None => Nil
             case Some(myStone) =>
@@ -44,34 +44,37 @@ object GameLogic {
                     case Stone.White => Stone.Black
                 }
                 
-                val (l, c) = coord
+                // direção do movimento: (deltaLinha, deltaColuna)
+                val directions = List((-1, 0), (1, 0), (0, -1), (0, 1))
                 
-                // Lista com as 4 direções de salto
-                // Formato: (LinhaInimigo, ColunaInimigo, LinhaDestino, ColunaDestino)
-                val directions = List(
-                    (l - 1, c, l - 2, c), // Salto para Cima
-                    (l + 1, c, l + 2, c), // Salto para Baixo
-                    (l, c - 1, l, c - 2), // Salto para a Esquerda
-                    (l, c + 1, l, c + 2) // Salto para a Direita
-                )
-                
-                def checkDirections(dirs: List[(Int, Int, Int, Int)]): List[Coord2D] = dirs match {
-                    case Nil => Nil
-                    case (el, ec, dl, dc) :: tail =>
-                        // Verifica se a coordenada de destino está dentro do tabuleiro
-                        if (dl >= 0 && dl < size && dc >= 0 && dc < size) {
-                            // Verifica se está lá o inimigo E se o destino está vazio
-                            val hasEnemy = board.get((el, ec)).contains(enemy)
-                            val isDestEmpty = board.get((dl, dc)).isEmpty
-                            
-                            if (hasEnemy && isDestEmpty) {
-                                (dl, dc) :: checkDirections(tail)
-                            } else {
-                                checkDirections(tail)
-                            }
+                // Função recursiva interna para explorar vários saltos
+                def exploreDirection(currL: Int, currC: Int, dL: Int, dC: Int): List[Coord2D] = {
+                    val enemyL = currL + dL
+                    val enemyC = currC + dC
+                    val destL = currL + 2 * dL
+                    val destC = currC + 2 * dC
+                    
+                    // Verifica se o destino ainda está dentro dos limites do tabuleiro
+                    if (destL >= 0 && destL < size && destC >= 0 && destC < size) {
+                        val hasEnemy = board.get((enemyL, enemyC)).contains(enemy)
+                        val isDestEmpty = board.get((destL, destC)).isEmpty
+                        
+                        if (hasEnemy && isDestEmpty) {
+                            val validDest = (destL, destC)
+                            validDest :: exploreDirection(destL, destC, dL, dC)
                         } else {
-                            checkDirections(tail)
+                            Nil
                         }
+                    } else {
+                        Nil
+                    }
+                }
+                
+                // Avalia as 4 direções recursivamente e junta todas as listas válidas (:::)
+                def checkDirections(dirs: List[(Int, Int)]): List[Coord2D] = dirs match {
+                    case Nil => Nil
+                    case (dL, dC) :: tail =>
+                        exploreDirection(coord._1, coord._2, dL, dC) ++ checkDirections(tail)
                 }
                 
                 checkDirections(directions)
@@ -100,32 +103,57 @@ object GameLogic {
                 false
         }
     }
-
-    def middleCoord(from: Coord2D, to: Coord2D): Coord2D = {
-        // Retorna as coord da casa entre a casa de origem e do fim
+    
+    // Recolhe todas as coordenadas capturadas entre a origem e o destino final
+    def getCapturedCoords(from: Coord2D, to: Coord2D): List[Coord2D] = {
         val (fromRow, fromCol) = from
         val (toRow, toCol) = to
-        val middleRow = ( fromRow + toRow ) / 2
-        val middleCol = ( fromCol + toCol ) /2
-        (middleRow, middleCol)
+        
+        // Determina a direção matemática do salto (1, -1 ou 0)
+        val dL = if (toRow > fromRow) 1 else if (toRow < fromRow) -1 else 0
+        val dC = if (toCol > fromCol) 1 else if (toCol < fromCol) -1 else 0
+        
+        @tailrec
+        def collect(currL: Int, currC: Int, acc: List[Coord2D]): List[Coord2D] = {
+            if (currL == toRow && currC == toCol) acc // Chegou ao fim do salto
+            else {
+                val captured = (currL + dL, currC + dC)
+                // Avança duas casas de cada vez no ciclo
+                collect(currL + dL * 2, currC + dC * 2, captured :: acc)
+            }
+        }
+        
+        collect(fromRow, fromCol, Nil)
     }
 
-    def updateOpenCoord(lstOpenCoords: List[Coord2D], from: Coord2D, to: Coord2D, captured: Coord2D): List[Coord2D] = {
+    /*def updateOpenCoord(lstOpenCoords: List[Coord2D], from: Coord2D, to: Coord2D, captured: Coord2D): List[Coord2D] = {
        // Atualiza a lista das pos vazias. Retira a de destino e acrescenta a de origem e capturada
         val withOutTo = lstOpenCoords.filter (_ != to)
         from :: captured :: withOutTo
+    }*/
+    
+    def updateOpenCoord(lstOpenCoords: List[Coord2D], from: Coord2D, to: Coord2D, capturedList: List[Coord2D]): List[Coord2D] = {
+        val withOutTo = lstOpenCoords.filter(_ != to)
+        // O operador ::: concatena a lista das peças capturadas com as posições livres
+        from :: (capturedList ++ withOutTo)
     }
 
-    def applyMove(board: Board, from: Coord2D, to: Coord2D, captured: Coord2D, player: Stone): Board = {
+    /*def applyMove(board: Board, from: Coord2D, to: Coord2D, captured: Coord2D, player: Stone): Board = {
         // Remove do Map e ao remover a chave do map está a colocar a Coordenada no tabuleiro vazia
         val boardWithOutFrom = board - from
         val boardWithOutCaptured = boardWithOutFrom - captured
         // to -> player basicamente cria um par-chave para a Stone
         boardWithOutCaptured + ( to -> player)
+    }*/
+    
+    def applyMove(board: Board, from: Coord2D, to: Coord2D, capturedList: List[Coord2D], player: Stone): Board = {
+        // Retira a origem, e o foldLeft trata de retirar todas as coordenadas da lista capturada do Board
+        val boardWithoutCaptured = (capturedList foldLeft (board - from)) ((accBoard, capCoord) => accBoard - capCoord)
+        boardWithoutCaptured + (to -> player)
     }
 
     // T2: Move a peça e devolve o tabuleiro e a lista das pos válidas
-    def play(board:Board, player: Stone, coordFrom:Coord2D,coordTo:Coord2D,lstOpenCoords:List[Coord2D]):(Option[Board], List[Coord2D]) = {
+    /*def play(board:Board, player: Stone, coordFrom:Coord2D,coordTo:Coord2D,lstOpenCoords:List[Coord2D]):(Option[Board], List[Coord2D]) = {
         val size = getSize(board, lstOpenCoords)
         if (!isValidPlay(board, player, coordFrom, coordTo, size)) {
             (None, lstOpenCoords)
@@ -137,10 +165,26 @@ object GameLogic {
 
             (Some(newBoard), newOpenLs)
         }
+    }*/
+    
+    def play(board: Board, player: Stone, coordFrom: Coord2D, coordTo: Coord2D, lstOpenCoords: List[Coord2D]): (Option[Board], List[Coord2D]) = {
+        val size = getSize(board, lstOpenCoords)
+        if (!isValidPlay(board, player, coordFrom, coordTo, size)) {
+            (None, lstOpenCoords)
+        } else {
+            // Agora obtemos uma lista em vez de uma única opção
+            val capturedList = getCapturedCoords(coordFrom, coordTo)
+            val newBoard = applyMove(board, coordFrom, coordTo, capturedList, player)
+            val newOpenLs = updateOpenCoord(lstOpenCoords, coordFrom, coordTo, capturedList)
+            
+            (Some(newBoard), newOpenLs)
+        }
     }
     
+    
+    
     // T3: Realizar uma jogada aleatória
-    def playRandomly(board:Board,
+    /*def playRandomly(board:Board,
                     r:MyRandom,
                     player:Stone,
                     lstOpenCoords:List[Coord2D],
@@ -148,6 +192,6 @@ object GameLogic {
                     (Option[Board],MyRandom,List[Coord2D],Option[Coord2D]) = {
         val (coord, nextR) = f(lstOpenCoords,MyRandom)
         play(coord)
-    }
+    }*/
 
 }
