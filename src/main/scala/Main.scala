@@ -6,7 +6,9 @@ object Main extends App {
     val initialRandom = MyRandom(7)
     
     menuLoop()
-    
+
+
+    // Loop do menu inicial
     @tailrec
     def menuLoop(): Unit = {
         TUI.showMainMenuPrompt()
@@ -46,7 +48,8 @@ object Main extends App {
                 menuLoop()
         }
     }
-    
+
+    // Escolha dentro do menu
     @tailrec
     def sizeChoiceLoop(): Int = {
         TUI.showSizeMenuPrompt()
@@ -79,7 +82,9 @@ object Main extends App {
                 holeChoiceLoop()
         }
     }
-    
+
+
+    // Loop do jogo em si
     @tailrec
     def gameLoop(board: Board, size: Int, rand: MyRandom, openCoords: List[Coord2D], currentPlayer: Stone): Unit = {
         TUI.printBoard(board, size)

@@ -20,7 +20,7 @@ object GameLogic {
         
         val initMap: Board = buildMap(0, 0, ParMap())
         
-        // Decide as peças a remover consoante o menu
+        // decide as peças a remover consoante o menu
         val (p1, p2) = hole match {
             case HolePosition.Center =>
                 val middle = size / 2
@@ -34,7 +34,7 @@ object GameLogic {
         initMap - p1 - p2
     }
     
-    // Função que verifica as 4 direções possíveis para a peça numa dada coordenada
+    // função que verifica as 4 direções possíveis para a peça numa coordenada
     def getValidMovesForPiece(board: Board, coord: Coord2D, size: Int): List[Coord2D] = {
         board.get(coord) match {
             case None => Nil
@@ -44,17 +44,17 @@ object GameLogic {
                     case Stone.White => Stone.Black
                 }
                 
-                // direção do movimento: (deltaLinha, deltaColuna)
+                // direções possíveis: (Linha, Col)
                 val directions = List((-1, 0), (1, 0), (0, -1), (0, 1))
                 
-                // Função recursiva interna para explorar vários saltos
+                // função recursiva interna para explorar vários saltos
                 def exploreDirection(currL: Int, currC: Int, dL: Int, dC: Int): List[Coord2D] = {
                     val enemyL = currL + dL
                     val enemyC = currC + dC
                     val destL = currL + 2 * dL
                     val destC = currC + 2 * dC
                     
-                    // Verifica se o destino ainda está dentro dos limites do tabuleiro
+                    // verifica se o destino ainda está dentro dos limites
                     if (destL >= 0 && destL < size && destC >= 0 && destC < size) {
                         val hasEnemy = board.get((enemyL, enemyC)).contains(enemy)
                         val isDestEmpty = board.get((destL, destC)).isEmpty
@@ -70,7 +70,7 @@ object GameLogic {
                     }
                 }
                 
-                // Avalia as 4 direções recursivamente e junta todas as listas válidas (++)
+                // avalia as 4 direções recursivamente e junta todas as listas
                 def checkDirections(dirs: List[(Int, Int)]): List[Coord2D] = dirs match {
                     case Nil => Nil
                     case (dL, dC) :: tail =>
@@ -87,17 +87,22 @@ object GameLogic {
         (lstOpenCoords(num), nextRandom)
     }
 
-
+    // GetSize: devolve o tamanho do tabuleiro
     def getSize(board: Board, lstOpenCoords: List[Coord2D]): Int = {
-        // Retorna o tamanho do tabuleiro. No fundo dá o tamanho do board (casas preenchidas) + as casas livres, na lista lstOpenCoords
+        // dá o tamanho do tabuleiro. No fundo dá o tamanho do board (casas preenchidas) + as casas livres, na lista lstOpenCoords
         val total = board.size + lstOpenCoords.size
         math.sqrt(total).toInt
     }
 
+    // Verifica se a jogada é válida
     def isValidPlay(board: Board, player: Stone, from: Coord2D, to: Coord2D, size: Int): Boolean = {
+        // busca a casa da coordenada origem
         board.get(from) match {
+            // se corresponder ao jogador
             case Some(stone) if stone == player =>
+                // busca os movimentos válidos
                 val validMoves = getValidMovesForPiece(board, from, size)
+                // verifica se contém a coordenada to
                 validMoves.contains(to)
             case _ =>
                 false
@@ -131,7 +136,8 @@ object GameLogic {
         val withOutTo = lstOpenCoords.filter (_ != to)
         from :: captured :: withOutTo
     }*/
-    
+
+    // Atualiza a lista das coordenadas livres
     def updateOpenCoord(lstOpenCoords: List[Coord2D], from: Coord2D, to: Coord2D, capturedList: List[Coord2D]): List[Coord2D] = {
         val withOutTo = lstOpenCoords.filter(_ != to)
         // O operador ++ concatena a lista das peças capturadas com as posições livres
@@ -145,7 +151,8 @@ object GameLogic {
         // to -> player basicamente cria um par-chave para a Stone
         boardWithOutCaptured + ( to -> player)
     }*/
-    
+
+    // Aplica o movimento
     def applyMove(board: Board, from: Coord2D, to: Coord2D, capturedList: List[Coord2D], player: Stone): Board = {
         // Retira a origem, e o foldLeft trata de retirar todas as coordenadas da lista capturada do Board
         val boardWithoutCaptured = (capturedList foldLeft (board - from)) ((accBoard, capCoord) => accBoard - capCoord)
@@ -166,9 +173,13 @@ object GameLogic {
             (Some(newBoard), newOpenLs)
         }
     }*/
-    
+
+    // Função de jogar
     def play(board: Board, player: Stone, coordFrom: Coord2D, coordTo: Coord2D, lstOpenCoords: List[Coord2D]): (Option[Board], List[Coord2D]) = {
+       // busca o tamanho do tabuleuiro
         val size = getSize(board, lstOpenCoords)
+
+        // se a jogada não for válida não faz nada
         if (!isValidPlay(board, player, coordFrom, coordTo, size)) {
             (None, lstOpenCoords)
         } else {
@@ -180,11 +191,9 @@ object GameLogic {
             (Some(newBoard), newOpenLs)
         }
     }
-    
-    def playRandomly(board: Board,
-                     r: MyRandom,
-                     player: Stone,
-                     lstOpenCoords: List[Coord2D],
+
+    // Fazer jogada de forma aleatória
+    def playRandomly(board: Board, r: MyRandom, player: Stone, lstOpenCoords: List[Coord2D],
                      f: (List[Coord2D], MyRandom) => (Coord2D, MyRandom)):
     (Option[Board], MyRandom, List[Coord2D], Option[Coord2D]) = {
         
