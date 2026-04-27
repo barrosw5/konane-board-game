@@ -131,12 +131,6 @@ object GameLogic {
         collect(fromRow, fromCol, Nil)
     }
 
-    /*def updateOpenCoord(lstOpenCoords: List[Coord2D], from: Coord2D, to: Coord2D, captured: Coord2D): List[Coord2D] = {
-       // Atualiza a lista das pos vazias. Retira a de destino e acrescenta a de origem e capturada
-        val withOutTo = lstOpenCoords.filter (_ != to)
-        from :: captured :: withOutTo
-    }*/
-
     // Atualiza a lista das coordenadas livres
     def updateOpenCoord(lstOpenCoords: List[Coord2D], from: Coord2D, to: Coord2D, capturedList: List[Coord2D]): List[Coord2D] = {
         val withOutTo = lstOpenCoords.filter(_ != to)
@@ -144,35 +138,12 @@ object GameLogic {
         from :: (capturedList ++ withOutTo)
     }
 
-    /*def applyMove(board: Board, from: Coord2D, to: Coord2D, captured: Coord2D, player: Stone): Board = {
-        // Remove do Map e ao remover a chave do map está a colocar a Coordenada no tabuleiro vazia
-        val boardWithOutFrom = board - from
-        val boardWithOutCaptured = boardWithOutFrom - captured
-        // to -> player basicamente cria um par-chave para a Stone
-        boardWithOutCaptured + ( to -> player)
-    }*/
-
     // Aplica o movimento
     def applyMove(board: Board, from: Coord2D, to: Coord2D, capturedList: List[Coord2D], player: Stone): Board = {
         // Retira a origem, e o foldLeft trata de retirar todas as coordenadas da lista capturada do Board
         val boardWithoutCaptured = (capturedList foldLeft (board - from)) ((accBoard, capCoord) => accBoard - capCoord)
         boardWithoutCaptured + (to -> player)
     }
-
-    // T2: Move a peça e devolve o tabuleiro e a lista das pos válidas
-    /*def play(board:Board, player: Stone, coordFrom:Coord2D,coordTo:Coord2D,lstOpenCoords:List[Coord2D]):(Option[Board], List[Coord2D]) = {
-        val size = getSize(board, lstOpenCoords)
-        if (!isValidPlay(board, player, coordFrom, coordTo, size)) {
-            (None, lstOpenCoords)
-        }
-        else {
-            val captured = middleCoord(coordFrom, coordTo)
-            val newBoard = applyMove(board, coordFrom, coordTo, captured, player)
-            val newOpenLs = updateOpenCoord(lstOpenCoords, coordFrom, coordTo, captured)
-
-            (Some(newBoard), newOpenLs)
-        }
-    }*/
 
     // Função de jogar
     def play(board: Board, player: Stone, coordFrom: Coord2D, coordTo: Coord2D, lstOpenCoords: List[Coord2D]): (Option[Board], List[Coord2D]) = {
@@ -227,5 +198,12 @@ object GameLogic {
                 (newBoardOpt, r2, newOpen, Some(toCoord))
         }
     }
-
+    
+    // T5: verificar se o computador ou o jogador ganhou o jogo
+    def hasValidMoves(board: Board, player: Stone, size: Int): Boolean = {
+        // Iteramos sobre o mapa de peças
+        board.exists { case (coord, stone) =>
+            stone == player && getValidMovesForPiece(board, coord, size).nonEmpty
+        }
+    }
 }

@@ -88,6 +88,14 @@ object Main extends App {
     @tailrec
     def gameLoop(board: Board, size: Int, rand: MyRandom, openCoords: List[Coord2D], currentPlayer: Stone): Unit = {
         TUI.printBoard(board, size)
+        
+        // Verificação da T5
+        if (!GameLogic.hasValidMoves(board, currentPlayer, size)) {
+            val winner = if (currentPlayer == Stone.Black) "White" else "Black"
+            println(s"\n[Game Over] $currentPlayer has no moves left. $winner wins!")
+            return // Sai do loop e volta ao menu
+        }
+        
         TUI.showPlayerTurn(currentPlayer)
         TUI.showGameMenuPrompt()
         
