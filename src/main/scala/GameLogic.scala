@@ -206,4 +206,8 @@ object GameLogic {
             stone == player && getValidMovesForPiece(board, coord, size).nonEmpty
         }
     }
+
+    def storeBoard(history: List[(Board, List[Coord2D], Stone, MyRandom)], board: Board, lstOpenCoords: List[Coord2D], currentplayer: Stone, rand: MyRandom): List[(Board, List[Coord2D], Stone, MyRandom)] = {
+        val newElement = (board, lstOpenCoords, currentplayer, rand)
+        newElement :: history
 }
