@@ -57,11 +57,15 @@ object TUI {
         println("-" * 24)
         println("----- In-Game Menu -----")
         println("-" * 24)
-        print("(p)lay, (m)achine random play, (c)heck moves or (q)uit: ")
+        print("(p)lay, (m)achine random play, (c)heck moves, (u) undo play or (q)uit: ")
     }
     
     def showCoordinatePrompt(axis: String): Unit = {
         print(s"Enter $axis number: ")
+    }
+
+    def showTextPrompt(axis: String): Unit = {
+        print(axis)
     }
     
     def getUserInput(): String = readLine().trim.toUpperCase
