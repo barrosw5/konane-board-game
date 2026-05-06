@@ -151,7 +151,7 @@ object Main extends App {
                                         choice match {
                                             case Some(idx) if idx > 0 && idx <= moves.length =>
                                                 val to = moves(idx - 1)
-                                                val newHistory = storeBoard(lstBoardsHistory, board, openCoords, currentPlayer, rand)
+                                                val newHistory = GameLogic.storeBoard(lstBoardsHistory, board, openCoords, currentPlayer, rand)
                                                 val (newBoardOpt, newOpen) = GameLogic.play(board, currentPlayer, from, to, openCoords)
 
                                                 newBoardOpt match {
@@ -183,7 +183,7 @@ object Main extends App {
                     }
                 
                 case "M" => // Machine play
-                    val newHistory = storeBoard(lstBoardsHistory, board, openCoords, currentPlayer, rand)
+                    val newHistory = GameLogic.storeBoard(lstBoardsHistory, board, openCoords, currentPlayer, rand)
                     val (newBoardOpt, nextRand, newOpen, toOpt) = GameLogic.playRandomly(board, rand, currentPlayer, openCoords, GameLogic.randomMove)
 
                     newBoardOpt match {
