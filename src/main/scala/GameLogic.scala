@@ -211,3 +211,4 @@ object GameLogic {
         val newElement = (board, lstOpenCoords, currentplayer, rand)
         newElement :: history
     }
+}
