@@ -215,11 +215,11 @@ object Main extends App {
                             gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory)
                     }
                 case "U" =>
-                    TUI.showTextPrompt("Tem a certeza (0) SIM ou (1) NÃO: ")
+                    TUI.showTextPrompt("Are you sure? (y)es or (n)o ")
                     val choice = TUI.getUserInput()
 
                     choice match {
-                        case "0" =>
+                        case "Y" =>
                             if ( lstBoardsHistory.isEmpty) {
                                 println("\n[Error] No moves to undo.\n")
                                 gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory)
@@ -228,7 +228,8 @@ object Main extends App {
                                 val (boardPrev, openCoordsPrev, currentPlayerPrev, randPrev) = lstBoardsHistory.head
                                 gameLoop(boardPrev, size, randPrev, openCoordsPrev, currentPlayerPrev, timeLimit, lstBoardsHistory.tail)
                             }
-                        case "1" =>
+                        case "N" =>
+                            println("\n")
                             gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory)
                         case _ =>
                             println("\n[Error] Invalid option.\n")
