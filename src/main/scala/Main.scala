@@ -39,7 +39,38 @@ object Main extends App {
                 menuLoop()
             
             case "L" =>
-                println("\n[Info] 'Load game' feature is currently under development.")
+                // 1. Tentar ler o ficheiro (Imperativo, mas guardamos o resultado num Option puro)
+                val fileContentOpt: Option[String] = try {
+                    val source = scala.io.Source.fromFile("savegame.txt")
+                    val content = source.mkString
+                    source.close()
+                    Some(content)
+                } catch {
+                    case _: java.io.FileNotFoundException =>
+                        println("\n[Error] No save game found ('savegame.txt' is missing).")
+                        None
+                    case e: Exception =>
+                        println(s"\n[Error] Could not read file: ${e.getMessage}")
+                        None
+                }
+                
+                // 2. Lógica pura com base no resultado (aqui o menuLoop já está em Tail Position)
+                fileContentOpt match {
+                    case Some(fileContent) =>
+                        SaveLoadLogic.loadGameState(fileContent) match {
+                            case Some((loadedBoard, loadedSize, loadedPlayer, loadedLimit, loadedOpenCoords, loadedRand)) =>
+                                println("\n=== Game Loaded Successfully! ===")
+                                // Entra no jogo com o estado carregado. 
+                                gameLoop(loadedBoard, loadedSize, loadedRand, loadedOpenCoords, loadedPlayer, loadedLimit, Nil)
+                                menuLoop() // Quando o gameLoop terminar, volta ao menu inicial
+                            case None =>
+                                println("\n[Error] The save file is corrupted or in an invalid format.")
+                                menuLoop()
+                        }
+                    case None =>
+                        // Se deu erro a ler (ex: ficheiro não existe), volta a mostrar o menu
+                        menuLoop()
+                }
             
             case "Q" =>
                 println("\nExiting Kōnane. Goodbye!")
@@ -214,6 +245,7 @@ object Main extends App {
                             println("\n[Error] Invalid coordinates. Please enter integer numbers.\n")
                             gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory)
                     }
+                    
                 case "U" =>
                     TUI.showTextPrompt("Are you sure? (y)es or (n)o ")
                     val choice = TUI.getUserInput()
@@ -235,7 +267,24 @@ object Main extends App {
                             println("\n[Error] Invalid option.\n")
                             gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory)
                     }
-
+                
+                case "S" =>
+                    // Usa a função pura para converter o estado numa String
+                    val fileData = SaveLoadLogic.saveGameState(board, size, currentPlayer, timeLimit, openCoords, rand)
+                    
+                    try {
+                        // Grava a String no disco (Imperativo)
+                        val pw = new java.io.PrintWriter(new java.io.File("savegame.txt"))
+                        pw.write(fileData)
+                        pw.close()
+                        println("\n[Success] Game saved successfully to 'savegame.txt'.\n")
+                    } catch {
+                        case e: Exception =>
+                            println(s"\n[Error] Failed to save game: ${e.getMessage}\n")
+                    }
+                    
+                    // O jogo não avança turno, apenas repete o ciclo com o mesmo estado
+                    gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory)
 
                 case "Q" =>
                     println("\nReturning to Main Menu...")
