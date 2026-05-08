@@ -3,14 +3,13 @@ import scala.annotation.tailrec
 object Main extends App {
     
     // Semente inicial para o gerador de números aleatórios
-    val initialRandom = MyRandom(7)
-    
-    menuLoop()
+    val initialRandom = saveRandom.loadRandomFromFile("seed.txt")
+    menuLoop(initialRandom)
 
 
     // Loop do menu inicial
     @tailrec
-    def menuLoop(): Unit = {
+    def menuLoop(currentRand: MyRandom): Unit = {
         TUI.showMainMenuPrompt()
         val userInput = TUI.getUserInput()
         
@@ -34,9 +33,9 @@ object Main extends App {
                 
                 println(s"\n=== Starting New Game (${size}x${size}) ===")
                 
-                gameLoop(initialBoard, size, initialRandom, List(p1, p2), Stone.Black, timeLimit, Nil)
+                val finalRand = gameLoop(initialBoard, size, currentRand, List(p1, p2), Stone.Black, timeLimit, Nil)
                 
-                menuLoop()
+                menuLoop(finalRand)
             
             case "L" =>
                 // 1. Tentar ler o ficheiro (Imperativo, mas guardamos o resultado num Option puro)
@@ -60,24 +59,24 @@ object Main extends App {
                         SaveLoadLogic.loadGameState(fileContent) match {
                             case Some((loadedBoard, loadedSize, loadedPlayer, loadedLimit, loadedOpenCoords, loadedRand)) =>
                                 println("\n=== Game Loaded Successfully! ===")
-                                // Entra no jogo com o estado carregado. 
-                                gameLoop(loadedBoard, loadedSize, loadedRand, loadedOpenCoords, loadedPlayer, loadedLimit, Nil)
-                                menuLoop() // Quando o gameLoop terminar, volta ao menu inicial
+                                // Aqui entramos com o loadedRand e recebemos o resultado no final
+                                val finalRand = gameLoop(loadedBoard, loadedSize, loadedRand, loadedOpenCoords, loadedPlayer, loadedLimit, Nil)
+                                menuLoop(finalRand)
                             case None =>
                                 println("\n[Error] The save file is corrupted or in an invalid format.")
-                                menuLoop()
+                                menuLoop(currentRand)
                         }
                     case None =>
-                        // Se deu erro a ler (ex: ficheiro não existe), volta a mostrar o menu
-                        menuLoop()
+                        menuLoop(currentRand)
                 }
             
             case "Q" =>
+                saveRandom.saveRandomToFile("seed.txt", currentRand)
                 println("\nExiting Kōnane. Goodbye!")
             
             case _ =>
                 println("\n[Error] Invalid option.")
-                menuLoop()
+                menuLoop(currentRand)
         }
     }
 
@@ -131,167 +130,167 @@ object Main extends App {
 
     // Loop do jogo em si
     @tailrec
-    def gameLoop(board: Board, size: Int, rand: MyRandom, openCoords: List[Coord2D], currentPlayer: Stone, timeLimit: Long, lstBoardsHistory: List[(Board, List[Coord2D], Stone, MyRandom)]): Unit = {
+    def gameLoop(board: Board, size: Int, rand: MyRandom, openCoords: List[Coord2D], currentPlayer: Stone, timeLimit: Long, lstBoardsHistory: List[(Board, List[Coord2D], Stone, MyRandom)]): MyRandom = {
         TUI.printBoard(board, size)
         
-        // Verificação da T5
+        // Verifica se o jogo acabou
         if (!GameLogic.hasValidMoves(board, currentPlayer, size)) {
             val winner = if (currentPlayer == Stone.Black) "White" else "Black"
             println(s"\n[Game Over] $currentPlayer has no moves left. $winner wins!")
-            return // Sai do loop e volta ao menu
-        }
-        
-        TUI.showPlayerTurn(currentPlayer)
-        
-        val startTime = System.currentTimeMillis()
-        
-        TUI.showGameMenuPrompt()
-        
-        val input = TUI.getUserInput()
-        
-        val endTime = System.currentTimeMillis()
-        val elapsed = endTime - startTime
-        
-        if (elapsed > timeLimit) {
-            println(s"\n[Timeout] You took ${elapsed / 1000.0}s! The time limit was ${timeLimit / 1000.0}s.")
-            val winner = if (currentPlayer == Stone.Black) "White" else "Black"
-            println(s"$winner wins!")
-        }
-        else {
-            input match {
-                case "P" => // Play option
-                    TUI.showCoordinatePrompt("piece row")
-                    val rFrom = TUI.getUserInput().toIntOption
-                    TUI.showCoordinatePrompt("piece column")
-                    val cFrom = TUI.getUserInput().toIntOption
-                    
-                    (rFrom, cFrom) match {
-                        case (Some(r), Some(c)) =>
-                            val from = (r, c)
-                            
-                            board.get(from) match {
-                                case Some(stone) if stone == currentPlayer =>
-                                    val moves = GameLogic.getValidMovesForPiece(board, from, size)
-                                    if (moves.isEmpty) {
-                                        println("\n[Error] This piece has no valid capture moves!\n")
-                                        gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory)
-                                    } else {
-                                        TUI.showValidMoves(moves)
-                                        val choice = TUI.getUserInput().toIntOption
-
-                                        choice match {
-                                            case Some(idx) if idx > 0 && idx <= moves.length =>
-                                                val to = moves(idx - 1)
-                                                val newHistory = GameLogic.storeBoard(lstBoardsHistory, board, openCoords, currentPlayer, rand)
-                                                val (newBoardOpt, newOpen) = GameLogic.play(board, currentPlayer, from, to, openCoords)
-
-                                                newBoardOpt match {
-                                                    case Some(nb) =>
-                                                        val nextPlayer = if (currentPlayer == Stone.Black) Stone.White else Stone.Black
-                                                        gameLoop(nb, size, rand, newOpen, nextPlayer, timeLimit, newHistory)
-                                                    case None =>
-                                                        println("\n[Error] The move failed.\n")
-                                                        gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory)
-                                                }
-                                            case _ =>
-                                                println("\n[Error] Invalid choice.\n")
-                                                gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory)
-                                        }
-                                    }
+            rand // A função avalia para a seed final e volta ao menuLoop
+        } else {
+            TUI.showPlayerTurn(currentPlayer)
+            
+            val startTime = System.currentTimeMillis()
+            TUI.showGameMenuPrompt()
+            val input = TUI.getUserInput()
+            val endTime = System.currentTimeMillis()
+            val elapsed = endTime - startTime
+            
+            // Verifica o tempo
+            if (elapsed > timeLimit) {
+                println(s"\n[Timeout] You took ${elapsed / 1000.0}s! The time limit was ${timeLimit / 1000.0}s.")
+                val winner = if (currentPlayer == Stone.Black) "White" else "Black"
+                println(s"$winner wins!")
+                rand // A função avalia para a seed final
+            } 
+            else {
+                input match {
+                    case "P" => // Play option
+                        TUI.showCoordinatePrompt("piece row")
+                        val rFrom = TUI.getUserInput().toIntOption
+                        TUI.showCoordinatePrompt("piece column")
+                        val cFrom = TUI.getUserInput().toIntOption
+                        
+                        (rFrom, cFrom) match {
+                            case (Some(r), Some(c)) =>
+                                val from = (r, c)
                                 
-                                case Some(_) =>
-                                    println("\n[Error] That is not your piece! Please choose a piece of your color.\n")
-                                    gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory)
-
-                                case None =>
-                                    println("\n[Error] There is no piece at that location!\n")
-                                    gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory)
-                            }
-
-                        case _ =>
-                            println("\n[Error] Invalid coordinates.\n")
-                            gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory)
-                    }
-                
-                case "M" => // Machine play
-                    val newHistory = GameLogic.storeBoard(lstBoardsHistory, board, openCoords, currentPlayer, rand)
-                    val (newBoardOpt, nextRand, newOpen, toOpt) = GameLogic.playRandomly(board, rand, currentPlayer, openCoords, GameLogic.randomMove)
-
-                    newBoardOpt match {
-                        case Some(nb) =>
-                            println(s"\n[Result] The computer randomly moved a piece to ${toOpt.get}!\n")
-                            val nextPlayer = if (currentPlayer == Stone.Black) Stone.White else Stone.Black
-                            gameLoop(nb, size, nextRand, newOpen, nextPlayer, timeLimit, newHistory)
-
-                        case None =>
-                            println("\n[Result] This player has no valid moves left. Game Over!\n")
-                            gameLoop(board, size, nextRand, openCoords, currentPlayer, timeLimit, lstBoardsHistory)
-                    }
-                
-                case "C" =>
-                    TUI.showCoordinatePrompt("row")
-                    val rowStr = TUI.getUserInput()
-                    TUI.showCoordinatePrompt("column")
-                    val colStr = TUI.getUserInput()
-                    
-                    // Usamos toIntOption para evitar o try/catch e manter a recursividade limpa
-                    (rowStr.toIntOption, colStr.toIntOption) match {
-                        case (Some(row), Some(col)) =>
-                            val moves = GameLogic.getValidMovesForPiece(board, (row, col), size)
-                            println(s"\n[Result] Valid moves for the piece at ($row, $col): $moves\n")
-                            gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory)
-
-                        case _ =>
-                            println("\n[Error] Invalid coordinates. Please enter integer numbers.\n")
-                            gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory)
-                    }
-                    
-                case "U" =>
-                    TUI.showTextPrompt("Are you sure? (y)es or (n)o ")
-                    val choice = TUI.getUserInput()
-
-                    choice match {
-                        case "Y" =>
-                            if ( lstBoardsHistory.isEmpty) {
-                                println("\n[Error] No moves to undo.\n")
+                                board.get(from) match {
+                                    case Some(stone) if stone == currentPlayer =>
+                                        val moves = GameLogic.getValidMovesForPiece(board, from, size)
+                                        if (moves.isEmpty) {
+                                            println("\n[Error] This piece has no valid capture moves!\n")
+                                            gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory)
+                                        } else {
+                                            TUI.showValidMoves(moves)
+                                            val choice = TUI.getUserInput().toIntOption
+                                            
+                                            choice match {
+                                                case Some(idx) if idx > 0 && idx <= moves.length =>
+                                                    val to = moves(idx - 1)
+                                                    val newHistory = GameLogic.storeBoard(lstBoardsHistory, board, openCoords, currentPlayer, rand)
+                                                    val (newBoardOpt, newOpen) = GameLogic.play(board, currentPlayer, from, to, openCoords)
+                                                    
+                                                    newBoardOpt match {
+                                                        case Some(nb) =>
+                                                            val nextPlayer = if (currentPlayer == Stone.Black) Stone.White else Stone.Black
+                                                            gameLoop(nb, size, rand, newOpen, nextPlayer, timeLimit, newHistory)
+                                                        case None =>
+                                                            println("\n[Error] The move failed.\n")
+                                                            gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory)
+                                                    }
+                                                case _ =>
+                                                    println("\n[Error] Invalid choice.\n")
+                                                    gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory)
+                                            }
+                                        }
+                                    
+                                    case Some(_) =>
+                                        println("\n[Error] That is not your piece! Please choose a piece of your color.\n")
+                                        gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory)
+                                    
+                                    case None =>
+                                        println("\n[Error] There is no piece at that location!\n")
+                                        gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory)
+                                }
+                            
+                            case _ =>
+                                println("\n[Error] Invalid coordinates.\n")
                                 gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory)
-                            }
-                            else {
-                                val (boardPrev, openCoordsPrev, currentPlayerPrev, randPrev) = lstBoardsHistory.head
-                                gameLoop(boardPrev, size, randPrev, openCoordsPrev, currentPlayerPrev, timeLimit, lstBoardsHistory.tail)
-                            }
-                        case "N" =>
-                            println("\n")
-                            gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory)
-                        case _ =>
-                            println("\n[Error] Invalid option.\n")
-                            gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory)
-                    }
-                
-                case "S" =>
-                    // Usa a função pura para converter o estado numa String
-                    val fileData = SaveLoadLogic.saveGameState(board, size, currentPlayer, timeLimit, openCoords, rand)
+                        }
                     
-                    try {
-                        // Grava a String no disco (Imperativo)
-                        val pw = new java.io.PrintWriter(new java.io.File("savegame.txt"))
-                        pw.write(fileData)
-                        pw.close()
-                        println("\n[Success] Game saved successfully to 'savegame.txt'.\n")
-                    } catch {
-                        case e: Exception =>
-                            println(s"\n[Error] Failed to save game: ${e.getMessage}\n")
-                    }
+                    case "M" => // Machine play
+                        val newHistory = GameLogic.storeBoard(lstBoardsHistory, board, openCoords, currentPlayer, rand)
+                        val (newBoardOpt, nextRand, newOpen, toOpt) = GameLogic.playRandomly(board, rand, currentPlayer, openCoords, GameLogic.randomMove)
+                        
+                        newBoardOpt match {
+                            case Some(nb) =>
+                                println(s"\n[Result] The computer randomly moved a piece to ${toOpt.get}!\n")
+                                val nextPlayer = if (currentPlayer == Stone.Black) Stone.White else Stone.Black
+                                gameLoop(nb, size, nextRand, newOpen, nextPlayer, timeLimit, newHistory)
+                            
+                            case None =>
+                                println("\n[Result] This player has no valid moves left. Game Over!\n")
+                                gameLoop(board, size, nextRand, openCoords, currentPlayer, timeLimit, lstBoardsHistory)
+                        }
                     
-                    // O jogo não avança turno, apenas repete o ciclo com o mesmo estado
-                    gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory)
-
-                case "Q" =>
-                    println("\nReturning to Main Menu...")
-
-                case _ =>
-                    println("\n[Error] Invalid option.\n")
-                    gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory)
+                    case "C" =>
+                        TUI.showCoordinatePrompt("row")
+                        val rowStr = TUI.getUserInput()
+                        TUI.showCoordinatePrompt("column")
+                        val colStr = TUI.getUserInput()
+                        
+                        // Usamos toIntOption para evitar o try/catch e manter a recursividade limpa
+                        (rowStr.toIntOption, colStr.toIntOption) match {
+                            case (Some(row), Some(col)) =>
+                                val moves = GameLogic.getValidMovesForPiece(board, (row, col), size)
+                                println(s"\n[Result] Valid moves for the piece at ($row, $col): $moves\n")
+                                gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory)
+                            
+                            case _ =>
+                                println("\n[Error] Invalid coordinates. Please enter integer numbers.\n")
+                                gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory)
+                        }
+                    
+                    case "U" =>
+                        TUI.showTextPrompt("Are you sure? (y)es or (n)o ")
+                        val choice = TUI.getUserInput()
+                        
+                        choice match {
+                            case "Y" =>
+                                if (lstBoardsHistory.isEmpty) {
+                                    println("\n[Error] No moves to undo.\n")
+                                    gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory)
+                                }
+                                else {
+                                    val (boardPrev, openCoordsPrev, currentPlayerPrev, randPrev) = lstBoardsHistory.head
+                                    gameLoop(boardPrev, size, randPrev, openCoordsPrev, currentPlayerPrev, timeLimit, lstBoardsHistory.tail)
+                                }
+                            case "N" =>
+                                println("\n")
+                                gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory)
+                            case _ =>
+                                println("\n[Error] Invalid option.\n")
+                                gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory)
+                        }
+                    
+                    case "S" =>
+                        // Usa a função pura para converter o estado numa String
+                        val fileData = SaveLoadLogic.saveGameState(board, size, currentPlayer, timeLimit, openCoords, rand)
+                        
+                        try {
+                            // Grava a String no disco (Imperativo)
+                            val pw = new java.io.PrintWriter(new java.io.File("savegame.txt"))
+                            pw.write(fileData)
+                            pw.close()
+                            println("\n[Success] Game saved successfully to 'savegame.txt'.\n")
+                        } catch {
+                            case e: Exception =>
+                                println(s"\n[Error] Failed to save game: ${e.getMessage}\n")
+                        }
+                        
+                        // O jogo não avança turno, apenas repete o ciclo com o mesmo estado
+                        gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory)
+                    
+                    case "Q" =>
+                        println("\nReturning to Main Menu...")
+                        rand
+                    
+                    case _ =>
+                        println("\n[Error] Invalid option.\n")
+                        gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory)
+                }
             }
         }
     }
