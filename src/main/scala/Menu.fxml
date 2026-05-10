@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.text.*?>
@@ -11,7 +12,15 @@
                 <Font name="System Bold" size="48.0" />
             </font>
         </Label>
-        <Label text="Escolha o tamanho do tabuleiro:" textFill="WHITE" />
+
+        <Label text="Escolha a posição inicial (Buraco):" textFill="WHITE" />
+        <ComboBox fx:id="holeComboBox" prefWidth="200.0" />
+
+        <Label text="Escolha o tamanho do tabuleiro:" textFill="WHITE">
+            <VBox.margin>
+                <Insets top="15.0" />
+            </VBox.margin>
+        </Label>
         <HBox alignment="CENTER" spacing="10.0">
             <children>
                 <Button mnemonicParsing="parsing" onAction="#onPlay4x4" text="4 x 4" />
