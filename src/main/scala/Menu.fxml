@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+
+<VBox alignment="CENTER" prefHeight="400.0" prefWidth="600.0" spacing="20.0" style="-fx-background-color: #3e2723;" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="MenuController">
+    <children>
+        <Label text="KONANE" textFill="WHITE">
+            <font>
+                <Font name="System Bold" size="48.0" />
+            </font>
+        </Label>
+
+        <Label text="Escolha a posição inicial (Buraco):" textFill="WHITE" />
+        <ComboBox fx:id="holeComboBox" prefWidth="200.0" />
+
+        <Label text="Escolha o tamanho do tabuleiro:" textFill="WHITE">
+            <VBox.margin>
+                <Insets top="15.0" />
+            </VBox.margin>
+        </Label>
+        <HBox alignment="CENTER" spacing="10.0">
+            <children>
+                <Button mnemonicParsing="parsing" onAction="#onPlay4x4" text="4 x 4" />
+                <Button mnemonicParsing="parsing" onAction="#onPlay6x6" text="6 x 6" />
+                <Button mnemonicParsing="parsing" onAction="#onPlay8x8" text="8 x 8" />
+                <Button mnemonicParsing="parsing" onAction="#onPlay10x10" text="10 x 10" />
+            </children>
+        </HBox>
+    </children>
+</VBox>
