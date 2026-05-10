@@ -31,6 +31,14 @@ object TUI {
         print("> ")
     }
     
+    def showColorMenuPrompt(): Unit = {
+        println("\nChoose your color:")
+        println("1 - Black (plays first)")
+        println("2 - White")
+        println("3 - Two Players (PvP)")
+        print("> ")
+    }
+    
     def showValidMoves(moves: List[Coord2D]): Unit = {
         println("\nValid destinations:")
         
