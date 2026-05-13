@@ -42,7 +42,12 @@ class MenuController {
     val root: Parent = loader.load()
 
     val controller = loader.getController[GameController]()
-    controller.initGame(size,getSelectedHole())
+    controller.initGame( boardSize = size,
+      hole = getSelectedHole(),
+      humanColor = getHumanColor(),      
+      difficulty = getDifficulty(),      
+      timeLimitMs = getTimeLimit(),      
+      randSeed = saveRandom.loadRandomFromFile("seed.txt").seed) 
 
     val stage = event.getSource.asInstanceOf[Node].getScene.getWindow.asInstanceOf[Stage]
     stage.setScene(new Scene(root))

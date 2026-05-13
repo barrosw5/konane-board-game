@@ -13,6 +13,7 @@ import scala.annotation.tailrec
 class GameController {
   @FXML private var boardGrid: GridPane = _
   @FXML private var statusLabel: Label = _
+  @FXML private var timerLabel: Label = _
 
   private var board: Board = _
   private var size: Int = _
@@ -20,10 +21,27 @@ class GameController {
   private var openCoords: List[Coord2D] = Nil
   private var selected: Option[Coord2D] = None
   private var isGameOver: Boolean = false
+  private var history: List[(Board,Stone,List[Coord2D])] = Nil
+  private var humanColor: Option[Stone] = None   // None = PvP
+  private var difficulty: Int = 0 // 0=facil(aleatorio),1=medio,2=dificil
+  private var timeLimitMs: Long = 3000L
+  private var rand: MyRandom = MyRandom(System.currentTimeMillis())
 
-  def initGame(boardSize: Int, hole: HolePosition): Unit = {
+
+  def initGame(boardSize: Int,
+               hole: HolePosition,
+               humanColor: Option[Stone],
+               difficulty: Int,
+               timeLimitMs: Long,
+               randSeed: Long = System.currentTimeMillis()): Unit = {
     this.size = boardSize
     this.board = GameLogic.initBoard(size, hole)
+    this.humanColor = humanColor
+    this.difficulty = difficulty
+    this.timeLimitMs = timeLimitMs
+    this.rand = MyRandom(randSeed)
+    this.history = Nil
+
     val (p1, p2) = hole match {
       case HolePosition.Center =>
         val m = size / 2
@@ -33,14 +51,16 @@ class GameController {
       case HolePosition.BottomLeft => ((size - 1, 0), (size - 1, 1))
       case HolePosition.BottomRight => ((size - 1, size - 1), (size - 1, size - 2))
     }
+    this.selected = None
     this.openCoords = List(p1, p2)
     this.currentPlayer = Stone.Black
     this.isGameOver = false
+
     checkGameOver()
     render()
   }
 
-  def render(): Unit = {
+  private def render(): Unit = {
     boardGrid.getChildren.clear()
     drawBoard(0, 0)
   }
@@ -102,13 +122,11 @@ class GameController {
 
       case Some(from) =>
         if (from == clicked) {
-          // O jogador clicou na peça que já estava selecionada (amarela) - Termina o turno voluntariamente
+          // O jogador clicou na peça que já estava selecionada (amarela) - Termina o turno
           currentPlayer = if (currentPlayer == Stone.Black) Stone.White else Stone.Black
           selected = None
           checkGameOver()
         } else {
-          // AQUI ESTAVA O ERRO: O bloco "else" estava em falta!
-          // Agora ele verifica corretamente se a casa clicada é um movimento válido
           val moves = GameLogic.getValidMovesForPiece(board, from, size)
 
           if (moves.contains(clicked)) {
@@ -121,7 +139,7 @@ class GameController {
 
                 val futureMoves = GameLogic.getValidMovesForPiece(board, clicked, size)
                 if (futureMoves.nonEmpty) {
-                  // Se ainda tiver saltos, mantém a mesma peça selecionada
+                  // Se ainda tiver saltos, mantém a peça selecionada
                   selected = Some(clicked)
                   statusLabel.setText("Podes saltar outra vez! Continua ou clica na tua peça para parar.")
                   statusLabel.setTextFill(Color.YELLOW)
