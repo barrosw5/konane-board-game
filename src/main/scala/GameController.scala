@@ -21,9 +21,18 @@ class GameController {
   private var selected: Option[Coord2D] = None
   private var isGameOver: Boolean = false
 
+  private var processingMove: Boolean = false
+
+  private val humanColor: Stone = Stone.Black
+  private val computerColor: Stone = Stone.White
+
+  // Gerador de aleatoriedade
+  private var rand: MyRandom = MyRandom(System.currentTimeMillis())
+
   def initGame(boardSize: Int, hole: HolePosition): Unit = {
     this.size = boardSize
     this.board = GameLogic.initBoard(size, hole)
+
     val (p1, p2) = hole match {
       case HolePosition.Center =>
         val m = size / 2
@@ -33,25 +42,99 @@ class GameController {
       case HolePosition.BottomLeft => ((size - 1, 0), (size - 1, 1))
       case HolePosition.BottomRight => ((size - 1, size - 1), (size - 1, size - 2))
     }
+    this.selected = None
     this.openCoords = List(p1, p2)
-    this.currentPlayer = Stone.Black
+    this.currentPlayer = Stone.Black   // Pretas começam
     this.isGameOver = false
+    this.processingMove = false
+
     checkGameOver()
     render()
+
+    if (!isGameOver && isComputerTurn) {
+      computerMove()
+    }
   }
 
-  def render(): Unit = {
+  private def isComputerTurn: Boolean = currentPlayer == computerColor
+
+  private def computerMove(): Unit = {
+    if (processingMove || isGameOver) return
+    processingMove = true
+    statusLabel.setText("Computador a pensar...")
+    statusLabel.setTextFill(Color.CYAN)
+
+    // Pequeno atraso para dar feedback visual
+    val delay = new javafx.animation.Timeline(
+      new javafx.animation.KeyFrame(javafx.util.Duration.millis(300), (_: ActionEvent) => {
+        doComputerMove()
+      })
+    )
+    delay.setCycleCount(1)
+    delay.play()
+  }
+
+  private def doComputerMove(): Unit = {
+    if (isGameOver) {
+      processingMove = false
+      return
+    }
+
+    val (newBoardOpt, newRand, newOpen, _) =
+      GameLogic.playRandomly(board, rand, currentPlayer, openCoords, GameLogic.randomMove)
+
+    newBoardOpt match {
+      case Some(newBoard) =>
+        board = newBoard
+        openCoords = newOpen
+        rand = newRand
+        selected = None
+        // Passa a vez
+        currentPlayer = if (currentPlayer == Stone.Black) Stone.White else Stone.Black
+
+      case None =>
+        // Computador não tem jogadas válidas
+        isGameOver = true
+        val winner = if (currentPlayer == Stone.Black) "BRANCO" else "PRETO"
+        statusLabel.setText(s"Computador sem movimentos! $winner venceu!")
+        statusLabel.setTextFill(Color.RED)
+    }
+    processingMove = false
+    render()
+    checkGameOver()
+
+    if (!isGameOver && !isComputerTurn) {
+      statusLabel.setText(s"Turno: ${if (currentPlayer == Stone.Black) "PRETO" else "BRANCO"}")
+      statusLabel.setTextFill(Color.WHITE)
+    }
+  }
+
+  // Termina o turno 
+  private def finishHumanTurn(): Unit = {
+    selected = None
+    currentPlayer = if (currentPlayer == Stone.Black) Stone.White else Stone.Black
+    checkGameOver()
+    render()
+    if (!isGameOver && isComputerTurn) {
+      computerMove()
+    } else if (!isGameOver) {
+      statusLabel.setText(s"Turno: ${if (currentPlayer == Stone.Black) "PRETO" else "BRANCO"}")
+      statusLabel.setTextFill(Color.WHITE)
+    }
+  }
+
+  private def render(): Unit = {
     boardGrid.getChildren.clear()
     drawBoard(0, 0)
   }
 
   @tailrec
   private def drawBoard(l: Int, c: Int): Unit = {
-    if (l >= size) () // Condição de paragem
-    else if (c >= size) drawBoard(l + 1, 0) // Avança linha
+    if (l >= size) ()
+    else if (c >= size) drawBoard(l + 1, 0)
     else {
       boardGrid.add(createCell(l, c), c, l)
-      drawBoard(l, c + 1) // Avança coluna
+      drawBoard(l, c + 1)
     }
   }
 
@@ -61,14 +144,11 @@ class GameController {
 
     val coord = (l, c)
     val isSelected = selected.contains(coord)
-
-    // Verifica se esta casa é um destino válido para a peça selecionada
     val isValidDestination = selected match {
       case Some(from) => GameLogic.getValidMovesForPiece(board, from, size).contains(coord)
       case None => false
     }
 
-    // Devolve a cor verde para saberes para onde podes saltar
     val bgColor = if (isSelected) "#ffeb3b"
     else if (isValidDestination) "#a5d6a7"
     else "#d7ccc8"
@@ -80,21 +160,21 @@ class GameController {
         val circle = new Circle(18)
         circle.setFill(if (s == Stone.Black) Color.BLACK else Color.WHITE)
         cell.getChildren.add(circle)
-      case None => () // Casa vazia
+      case None => ()
     }
 
-    if (!isGameOver) {
+    if (!isGameOver && !processingMove && currentPlayer == humanColor) {
       cell.setOnMouseClicked((_: MouseEvent) => handleSelect(l, c))
     }
     cell
   }
 
   private def handleSelect(l: Int, c: Int): Unit = {
+    if (isGameOver || processingMove || currentPlayer != humanColor) return
     val clicked = (l, c)
 
     selected match {
       case None =>
-        // Seleciona a peça se existir e pertencer ao jogador atual
         board.get(clicked) match {
           case Some(s) if s == currentPlayer => selected = Some(clicked)
           case _ => ()
@@ -102,39 +182,26 @@ class GameController {
 
       case Some(from) =>
         if (from == clicked) {
-          // O jogador clicou na peça que já estava selecionada (amarela) - Termina o turno voluntariamente
-          currentPlayer = if (currentPlayer == Stone.Black) Stone.White else Stone.Black
-          selected = None
-          checkGameOver()
+          finishHumanTurn()
         } else {
-          // AQUI ESTAVA O ERRO: O bloco "else" estava em falta!
-          // Agora ele verifica corretamente se a casa clicada é um movimento válido
           val moves = GameLogic.getValidMovesForPiece(board, from, size)
-
           if (moves.contains(clicked)) {
             val (newBoardOpt, newOpen) = GameLogic.play(board, currentPlayer, from, clicked, openCoords)
-
             newBoardOpt match {
               case Some(newBoard) =>
                 board = newBoard
                 openCoords = newOpen
-
                 val futureMoves = GameLogic.getValidMovesForPiece(board, clicked, size)
                 if (futureMoves.nonEmpty) {
-                  // Se ainda tiver saltos, mantém a mesma peça selecionada
                   selected = Some(clicked)
-                  statusLabel.setText("Podes saltar outra vez! Continua ou clica na tua peça para parar.")
+                  statusLabel.setText("Podes saltar outra vez! Clique na peça para parar.")
                   statusLabel.setTextFill(Color.YELLOW)
                 } else {
-                  // Acabaram os saltos, muda o jogador
-                  currentPlayer = if (currentPlayer == Stone.Black) Stone.White else Stone.Black
-                  selected = None
-                  checkGameOver()
+                  finishHumanTurn()
                 }
               case None => ()
             }
           } else {
-            // Clicou noutra casa (inválida). Se for uma peça do próprio jogador, muda a seleção.
             board.get(clicked) match {
               case Some(s) if s == currentPlayer => selected = Some(clicked)
               case _ => selected = None
@@ -142,7 +209,6 @@ class GameController {
           }
         }
     }
-    // Atualiza a visualização com o novo estado (quer tenha havido movimento, seleção ou mudança de turno)
     render()
   }
 
@@ -153,7 +219,6 @@ class GameController {
       statusLabel.setText(s"FIM DE JOGO! O jogador $vencedor venceu!")
       statusLabel.setTextFill(Color.RED)
     } else {
-      // Atualiza a Label para o turno normal do próximo jogador
       val corTexto = if (currentPlayer == Stone.Black) "PRETO" else "BRANCO"
       statusLabel.setText(s"Turno: $corTexto")
       statusLabel.setTextFill(Color.WHITE)
