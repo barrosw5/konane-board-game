@@ -26,15 +26,16 @@ class GameController {
 
   private var processingMove: Boolean = false
 
-  private val humanColor: Stone = Stone.Black
-  private val computerColor: Stone = Stone.White
+  private var humanColor: Stone = Stone.Black
+  private var computerColor: Stone = Stone.White
   private var history: List[(Board, List[Coord2D], Stone, MyRandom)] = Nil
   private var rand: MyRandom = MyRandom(System.currentTimeMillis())
 
   private var isInJump: Boolean = false
   private var timeLimitMs: Long = 30000L
-  private var timer: Option[javafx.animation.Timeline] = None
+  private var timer: Option[Timeline] = None
   private var timeRemainingMs: Long = 0L
+  private var computerDelay: Option[Timeline] = None
 
 
 
@@ -60,6 +61,7 @@ class GameController {
 
     checkGameOver()
     render()
+    startTimerIfHumanTurn()
 
     if (!isGameOver && isComputerTurn) {
       computerMove()
@@ -83,14 +85,17 @@ class GameController {
     statusLabel.setText("Computador a pensar...")
     statusLabel.setTextFill(Color.CYAN)
 
+    computerDelay.foreach((_.stop()))
     // Pequeno atraso para ver a jogada do computador
-    val delay = new javafx.animation.Timeline(
-      new javafx.animation.KeyFrame(javafx.util.Duration.millis(1500), (_: ActionEvent) => {
+    val delay = new Timeline(
+      new KeyFrame(javafx.util.Duration.millis(1500), (_: ActionEvent) => {
+        computerDelay = None
         doComputerMove()
       })
     )
     delay.setCycleCount(1)
     delay.play()
+    computerDelay = Some(delay)
   }
 
   private def doComputerMove(): Unit = {
@@ -266,6 +271,98 @@ class GameController {
     stage.setScene(new Scene(root))
   }
 
+  @FXML def onSave(event: ActionEvent): Unit = {
+    if (isInJump) {
+      statusLabel.setText("Não podes guardar a meio de uma jogada! Termina os saltos primeiro.")
+      statusLabel.setTextFill(Color.ORANGE)
+      return
+    }
+    val humanColorOpt: Option[Stone] = Some(humanColor)
+
+    val data = SaveLoadLogic.saveGameState(
+      board = board,
+      size = size,
+      currentPlayer = currentPlayer,
+      timeLimit = timeLimitMs,
+      openCoords = openCoords,
+      rand = rand,
+      humanColor = humanColorOpt,
+      selected = selected
+    )
+    try {
+      val pw = new java.io.PrintWriter(new java.io.File("savegame.txt"))
+      pw.write(data)
+      pw.close()
+      statusLabel.setText("Jogo guardado em savegame.txt")
+      statusLabel.setTextFill(Color.GREEN)
+    } catch {
+      case e: Exception =>
+        statusLabel.setText(s"Erro ao guardar: ${e.getMessage}")
+        statusLabel.setTextFill(Color.RED)
+    }
+  }
+
+  @FXML def onLoad(event: ActionEvent): Unit = {
+    if (isInJump) {
+      statusLabel.setText("Não podes carregar a meio de uma jogada! Termina os saltos primeiro.")
+      statusLabel.setTextFill(Color.ORANGE)
+      return
+    }
+    computerDelay.foreach(_.stop())
+    computerDelay = None
+    stopTimer()
+    processingMove = false
+    try {
+      val source = scala.io.Source.fromFile("savegame.txt")
+      val content = source.mkString
+      source.close()
+
+      SaveLoadLogic.loadGameState(content) match {
+        case Some((loadedBoard, loadedSize, loadedPlayer, loadedTimeLimit, loadedOpenCoords, loadedRand, loadedHumanColor, loadedSelected)) =>
+          // Atualiza o estado do jogo
+          this.board = loadedBoard
+          this.size = loadedSize
+          this.currentPlayer = loadedPlayer
+          this.timeLimitMs = loadedTimeLimit
+          this.openCoords = loadedOpenCoords
+          this.rand = loadedRand
+          this.isGameOver = false
+          this.processingMove = false
+          this.selected = loadedSelected
+          this.isInJump = loadedSelected.isDefined
+
+          loadedHumanColor match {
+            case Some(color) =>
+              this.humanColor = color
+              this.computerColor = if (color == Stone.Black) Stone.White else Stone.Black
+            case None =>          // modo PvP
+              this.humanColor = Stone.Black
+          }
+
+          this.history = Nil
+
+          render()
+          checkGameOver()
+          statusLabel.setText("Jogo carregado com sucesso!")
+          statusLabel.setTextFill(Color.GREEN)
+
+          // Se a vez for do computador, inicia jogada
+          if (!isGameOver && isComputerTurn && !isInJump) computerMove()
+          else if (!isGameOver && !isComputerTurn) startTimerIfHumanTurn()
+
+        case None =>
+          statusLabel.setText("Erro: ficheiro de save inválido")
+          statusLabel.setTextFill(Color.RED)
+      }
+    } catch {
+      case _: java.io.FileNotFoundException =>
+        statusLabel.setText("Nenhum save encontrado (savegame.txt)")
+        statusLabel.setTextFill(Color.RED)
+      case e: Exception =>
+        statusLabel.setText(s"Erro ao carregar: ${e.getMessage}")
+        statusLabel.setTextFill(Color.RED)
+    }
+  }
   @FXML def onUndo(event: ActionEvent): Unit = {
     if (selected.isDefined && isInJump) {
       statusLabel.setText("Não podes fazer undo a meio de uma jogada! Termina os saltos primeiro.")
