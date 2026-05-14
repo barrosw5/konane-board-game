@@ -7,12 +7,15 @@ import javafx.scene.input.MouseEvent
 import javafx.event.ActionEvent
 import javafx.scene.{Node, Parent, Scene}
 import javafx.stage.Stage
+import javafx.animation.{Timeline,KeyFrame}
+import javafx.util.Duration
 
 import scala.annotation.tailrec
 
 class GameController {
   @FXML private var boardGrid: GridPane = _
   @FXML private var statusLabel: Label = _
+  @FXML private var timerLabel: Label = _
 
   private var board: Board = _
   private var size: Int = _
@@ -29,10 +32,16 @@ class GameController {
   private var rand: MyRandom = MyRandom(System.currentTimeMillis())
 
   private var isInJump: Boolean = false
+  private var timeLimitMs: Long = 30000L
+  private var timer: Option[javafx.animation.Timeline] = None
+  private var timeRemainingMs: Long = 0L
 
-  def initGame(boardSize: Int, hole: HolePosition): Unit = {
+
+
+  def initGame(boardSize: Int, hole: HolePosition, timeLimitMs: Long): Unit = {
     this.size = boardSize
     this.board = GameLogic.initBoard(size, hole)
+    this.timeLimitMs = timeLimitMs
 
     val (p1, p2) = hole match {
       case HolePosition.Center =>
@@ -69,6 +78,7 @@ class GameController {
       return
     }
     if (processingMove || isGameOver) return
+    stopTimer()
     processingMove = true
     statusLabel.setText("Computador a pensar...")
     statusLabel.setTextFill(Color.CYAN)
@@ -115,6 +125,7 @@ class GameController {
     checkGameOver()
 
     if (!isGameOver && !isComputerTurn) {
+      startTimerIfHumanTurn()
       statusLabel.setText(s"Turno: ${if (currentPlayer == Stone.Black) "PRETO" else "BRANCO"}")
       statusLabel.setTextFill(Color.WHITE)
     }
@@ -127,9 +138,11 @@ class GameController {
     currentPlayer = if (currentPlayer == Stone.Black) Stone.White else Stone.Black
     checkGameOver()
     render()
+    stopTimer()
     if (!isGameOver && isComputerTurn) {
       computerMove()
     } else if (!isGameOver) {
+      startTimerIfHumanTurn()
       statusLabel.setText(s"Turno: ${if (currentPlayer == Stone.Black) "PRETO" else "BRANCO"}")
       statusLabel.setTextFill(Color.WHITE)
     }
@@ -283,6 +296,7 @@ class GameController {
         processingMove = false
         render()
         checkGameOver()
+        stopTimer()
         statusLabel.setText(s"Undo efetuado. Turno: ${if (currentPlayer == Stone.Black) "PRETO" else "BRANCO"}")
         if (!isGameOver && currentPlayer == computerColor) {
           val delay = new javafx.animation.Timeline(
@@ -296,5 +310,56 @@ class GameController {
           delay.play()
         }
     }
+  }
+
+  private def startTimerIfHumanTurn(): Unit = {
+    stopTimer()
+    if (!isGameOver && !isComputerTurn) {
+      timeRemainingMs = timeLimitMs
+      updateTimerLabel()
+      val timeline = new Timeline(
+        new KeyFrame(Duration.seconds(1), (_: ActionEvent) => tick())
+      )
+      timeline.setCycleCount(-1)
+      timeline.play()
+      timer = Some(timeline)
+    } else {
+      if (timerLabel != null) timerLabel.setText("Tempo: -- s")
+    }
+  }
+
+  private def stopTimer(): Unit = {
+    timer.foreach(_.stop())
+    timer = None
+  }
+
+  private def tick(): Unit = {
+    if (!isGameOver && !isComputerTurn) {
+      timeRemainingMs -= 1000
+      updateTimerLabel()
+      if (timeRemainingMs <= 0) {
+        stopTimer()
+        timeoutLose()
+      }
+    } else {
+      stopTimer()
+    }
+  }
+
+  private def updateTimerLabel(): Unit = {
+    if (timerLabel != null) {
+      val seconds = math.max(0, timeRemainingMs / 1000)
+      timerLabel.setText(f"Tempo: $seconds%d s")
+      if (seconds <= 5) timerLabel.setTextFill(Color.RED)
+      else timerLabel.setTextFill(Color.YELLOW)
+    }
+  }
+
+  private def timeoutLose(): Unit = {
+    isGameOver = true
+    val winner = if (currentPlayer == Stone.Black) "BRANCO" else "PRETO"
+    statusLabel.setText(s"TEMPO ESGOTADO! $winner venceu!")
+    statusLabel.setTextFill(Color.RED)
+    stopTimer()
   }
 }

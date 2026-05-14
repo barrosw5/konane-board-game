@@ -14,6 +14,11 @@
                         <Font name="System Bold" size="18.0" />
                     </font>
                 </Label>
+                <Label fx:id="timerLabel" text="Tempo: -- s" textFill="YELLOW">
+                    <font>
+                        <Font name="System" size="14.0" />
+                    </font>
+                </Label>
             </children>
             <padding>
                 <Insets bottom="20.0" top="20.0" />

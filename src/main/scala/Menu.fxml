@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.Insets?>
+<?import javafx.geometry.*?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.text.*?>
@@ -15,6 +15,20 @@
 
         <Label text="Escolha a posição inicial (Buraco):" textFill="WHITE" />
         <ComboBox fx:id="holeComboBox" prefWidth="200.0" />
+
+        <Label text="Tempo limite por jogada (segundos):" textFill="WHITE">
+            <VBox.margin>
+                <Insets top="15.0" />
+            </VBox.margin>
+        </Label>
+        <HBox alignment="CENTER">
+            <TextField fx:id="timeLimitField" prefWidth="60.0" promptText="30" />
+            <Label text=" segundos" textFill="WHITE">
+                <HBox.margin>
+                    <Insets left="5.0" />
+                </HBox.margin>
+            </Label>
+        </HBox>
 
         <Label text="Escolha o tamanho do tabuleiro:" textFill="WHITE">
             <VBox.margin>
