@@ -37,12 +37,28 @@ class GameController {
   private var timeRemainingMs: Long = 0L
   private var computerDelay: Option[Timeline] = None
 
+  private var isPvP: Boolean = false
+
+  private def isHumanTurn: Boolean = if (isPvP) true else currentPlayer == humanColor
+  private def isComputerTurn: Boolean = !isPvP && currentPlayer == computerColor
 
 
-  def initGame(boardSize: Int, hole: HolePosition, timeLimitMs: Long): Unit = {
+
+  def initGame(boardSize: Int, hole: HolePosition, timeLimitMs: Long, humanColorOpt : Option[Stone]): Unit = {
     this.size = boardSize
     this.board = GameLogic.initBoard(size, hole)
     this.timeLimitMs = timeLimitMs
+    this.isPvP = humanColorOpt.isEmpty
+
+    if (isPvP) {
+      // Modo dois humanos: cores fixas (Pretas vs Brancas), computador nunca joga
+      this.humanColor = Stone.Black   // não usado para decidir jogadas
+      this.computerColor = Stone.White // não usado
+    } else {
+      // Humano vs Computador
+      this.humanColor = humanColorOpt.get
+      this.computerColor = if (humanColor == Stone.Black) Stone.White else Stone.Black
+    }
 
     val (p1, p2) = hole match {
       case HolePosition.Center =>
@@ -63,12 +79,11 @@ class GameController {
     render()
     startTimerIfHumanTurn()
 
-    if (!isGameOver && isComputerTurn) {
+    if (!isGameOver && isComputerTurn && !isPvP) {
       computerMove()
     }
   }
 
-  private def isComputerTurn: Boolean = currentPlayer == computerColor
 
   private def pushHistory(): Unit = {
     history = (board, openCoords, currentPlayer, rand) :: history
@@ -144,7 +159,7 @@ class GameController {
     checkGameOver()
     render()
     stopTimer()
-    if (!isGameOver && isComputerTurn) {
+    if (!isGameOver && isComputerTurn && !isPvP) {
       computerMove()
     } else if (!isGameOver) {
       startTimerIfHumanTurn()
@@ -193,14 +208,14 @@ class GameController {
       case None => ()
     }
 
-    if (!isGameOver && !processingMove && currentPlayer == humanColor) {
+    if (!isGameOver && !processingMove && isHumanTurn) {
       cell.setOnMouseClicked((_: MouseEvent) => handleSelect(l, c))
     }
     cell
   }
 
   private def handleSelect(l: Int, c: Int): Unit = {
-    if (isGameOver || processingMove || currentPlayer != humanColor) return
+    if (isGameOver || processingMove || !isHumanTurn) return
     val clicked = (l, c)
 
     selected match {
@@ -277,7 +292,7 @@ class GameController {
       statusLabel.setTextFill(Color.ORANGE)
       return
     }
-    val humanColorOpt: Option[Stone] = Some(humanColor)
+    val humanColorOpt: Option[Stone] = if (isPvP) None else Some(humanColor)
 
     val data = SaveLoadLogic.saveGameState(
       board = board,
@@ -333,10 +348,11 @@ class GameController {
 
           loadedHumanColor match {
             case Some(color) =>
+              this.isPvP = false
               this.humanColor = color
               this.computerColor = if (color == Stone.Black) Stone.White else Stone.Black
-            case None =>          // modo PvP
-              this.humanColor = Stone.Black
+            case None =>
+              this.isPvP = true// modo PvP
           }
 
           this.history = Nil
@@ -398,7 +414,7 @@ class GameController {
         if (!isGameOver && currentPlayer == computerColor) {
           val delay = new javafx.animation.Timeline(
             new javafx.animation.KeyFrame(javafx.util.Duration.millis(1000), (_: ActionEvent) => {
-              if (!isGameOver && currentPlayer == computerColor && !processingMove) {
+              if (!isGameOver && isComputerTurn && !processingMove) {
                 computerMove()
               }
             })
@@ -411,7 +427,9 @@ class GameController {
 
   private def startTimerIfHumanTurn(): Unit = {
     stopTimer()
-    if (!isGameOver && !isComputerTurn) {
+    if(isGameOver) return
+    val needTimer = if(isPvP) true else !isComputerTurn
+    if (needTimer) {
       timeRemainingMs = timeLimitMs
       updateTimerLabel()
       val timeline = new Timeline(
