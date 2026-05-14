@@ -3,9 +3,12 @@ import javafx.scene.{Parent, Scene, Node}
 import javafx.stage.Stage
 import javafx.event.ActionEvent
 import javafx.scene.control.ComboBox
+import javafx.scene.control.TextField
 
 class MenuController {
   @FXML private var holeComboBox: ComboBox[String] = _
+  @FXML private var timeLimitField: TextField = _
+  @FXML private var colorComboBox: ComboBox[String] = _
 
   @FXML
   def initialize(): Unit = {
@@ -18,11 +21,21 @@ class MenuController {
     )
     // Deixar o "Centro" selecionado por defeito
     holeComboBox.getSelectionModel.selectFirst()
+
+    colorComboBox.getItems.addAll(
+      "Jogar com Pretas (primeiro)",
+      "Jogar com Brancas",
+      "Dois Humanos (PvP)"
+    )
+    colorComboBox.getSelectionModel.selectFirst()
   }
 
   @FXML def onPlay4x4(e: ActionEvent): Unit = loadGame(4, e)
+
   @FXML def onPlay6x6(e: ActionEvent): Unit = loadGame(6, e)
+
   @FXML def onPlay8x8(e: ActionEvent): Unit = loadGame(8, e)
+
   @FXML def onPlay10x10(e: ActionEvent): Unit = loadGame(10, e)
 
   private def getSelectedHole(): HolePosition = {
@@ -42,9 +55,26 @@ class MenuController {
     val root: Parent = loader.load()
 
     val controller = loader.getController[GameController]()
-    controller.initGame(size,getSelectedHole())
+    controller.initGame(size, getSelectedHole(), getTimeLimit(),getHumanColor())
 
     val stage = event.getSource.asInstanceOf[Node].getScene.getWindow.asInstanceOf[Stage]
     stage.setScene(new Scene(root))
+  }
+
+  private def getTimeLimit(): Long = {
+    try {
+      val secs = timeLimitField.getText.toDouble
+      if (secs > 0) (secs * 1000).toLong else 30000L // 30 segundos default
+    } catch {
+      case _: NumberFormatException => 30000L
+    }
+  }
+
+  private def getHumanColor(): Option[Stone] = {
+    colorComboBox.getValue match {
+      case "Jogar com Pretas (primeiro)" => Some(Stone.Black)
+      case "Jogar com Brancas" => Some(Stone.White)
+      case _ => None // Dois Humanos
+    }
   }
 }

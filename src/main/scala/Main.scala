@@ -53,7 +53,7 @@ object Main extends App {
                 fileContentOpt match {
                     case Some(fileContent) =>
                         SaveLoadLogic.loadGameState(fileContent) match {
-                            case Some((loadedBoard, loadedSize, loadedPlayer, loadedLimit, loadedOpenCoords, loadedRand, loadedHumanColor)) =>
+                            case Some((loadedBoard, loadedSize, loadedPlayer, loadedLimit, loadedOpenCoords, loadedRand, loadedHumanColor,_)) =>
                                 println("\n=== Game Loaded Successfully! ===")
                                 val finalRand = gameLoop(loadedBoard, loadedSize, loadedRand, loadedOpenCoords, loadedPlayer, loadedLimit, Nil, loadedHumanColor)
                                 menuLoop(finalRand)

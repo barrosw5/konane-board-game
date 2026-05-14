@@ -7,12 +7,15 @@ import javafx.scene.input.MouseEvent
 import javafx.event.ActionEvent
 import javafx.scene.{Node, Parent, Scene}
 import javafx.stage.Stage
+import javafx.animation.{Timeline,KeyFrame}
+import javafx.util.Duration
 
 import scala.annotation.tailrec
 
 class GameController {
   @FXML private var boardGrid: GridPane = _
   @FXML private var statusLabel: Label = _
+  @FXML private var timerLabel: Label = _
 
   private var board: Board = _
   private var size: Int = _
@@ -21,9 +24,42 @@ class GameController {
   private var selected: Option[Coord2D] = None
   private var isGameOver: Boolean = false
 
-  def initGame(boardSize: Int, hole: HolePosition): Unit = {
+  private var processingMove: Boolean = false
+
+  private var humanColor: Stone = Stone.Black
+  private var computerColor: Stone = Stone.White
+  private var history: List[(Board, List[Coord2D], Stone, MyRandom)] = Nil
+  private var rand: MyRandom = MyRandom(System.currentTimeMillis())
+
+  private var isInJump: Boolean = false
+  private var timeLimitMs: Long = 30000L
+  private var timer: Option[Timeline] = None
+  private var timeRemainingMs: Long = 0L
+  private var computerDelay: Option[Timeline] = None
+
+  private var isPvP: Boolean = false
+
+  private def isHumanTurn: Boolean = if (isPvP) true else currentPlayer == humanColor
+  private def isComputerTurn: Boolean = !isPvP && currentPlayer == computerColor
+
+
+
+  def initGame(boardSize: Int, hole: HolePosition, timeLimitMs: Long, humanColorOpt : Option[Stone]): Unit = {
     this.size = boardSize
     this.board = GameLogic.initBoard(size, hole)
+    this.timeLimitMs = timeLimitMs
+    this.isPvP = humanColorOpt.isEmpty
+
+    if (isPvP) {
+      // Modo dois humanos: cores fixas (Pretas vs Brancas), computador nunca joga
+      this.humanColor = Stone.Black   // não usado para decidir jogadas
+      this.computerColor = Stone.White // não usado
+    } else {
+      // Humano vs Computador
+      this.humanColor = humanColorOpt.get
+      this.computerColor = if (humanColor == Stone.Black) Stone.White else Stone.Black
+    }
+
     val (p1, p2) = hole match {
       case HolePosition.Center =>
         val m = size / 2
@@ -33,25 +69,117 @@ class GameController {
       case HolePosition.BottomLeft => ((size - 1, 0), (size - 1, 1))
       case HolePosition.BottomRight => ((size - 1, size - 1), (size - 1, size - 2))
     }
+    this.selected = None
     this.openCoords = List(p1, p2)
-    this.currentPlayer = Stone.Black
+    this.currentPlayer = Stone.Black // Pretas começam
     this.isGameOver = false
+    this.processingMove = false
+
     checkGameOver()
     render()
+    startTimerIfHumanTurn()
+
+    if (!isGameOver && isComputerTurn && !isPvP) {
+      computerMove()
+    }
   }
 
-  def render(): Unit = {
+
+  private def pushHistory(): Unit = {
+    history = (board, openCoords, currentPlayer, rand) :: history
+  }
+
+  private def computerMove(): Unit = {
+    if (currentPlayer != computerColor){
+      processingMove = false
+      return
+    }
+    if (processingMove || isGameOver) return
+    stopTimer()
+    processingMove = true
+    statusLabel.setText("Computador a pensar...")
+    statusLabel.setTextFill(Color.CYAN)
+
+    computerDelay.foreach((_.stop()))
+    // Pequeno atraso para ver a jogada do computador
+    val delay = new Timeline(
+      new KeyFrame(javafx.util.Duration.millis(1500), (_: ActionEvent) => {
+        computerDelay = None
+        doComputerMove()
+      })
+    )
+    delay.setCycleCount(1)
+    delay.play()
+    computerDelay = Some(delay)
+  }
+
+  private def doComputerMove(): Unit = {
+    if (isGameOver) {
+      processingMove = false
+      return
+    }
+
+    pushHistory()
+
+    val (newBoardOpt, newRand, newOpen, _) =
+      GameLogic.playRandomly(board, rand, currentPlayer, openCoords, GameLogic.randomMove)
+
+    newBoardOpt match {
+      case Some(newBoard) =>
+        board = newBoard
+        openCoords = newOpen
+        rand = newRand
+        selected = None
+        // Passa a vez
+        currentPlayer = if (currentPlayer == Stone.Black) Stone.White else Stone.Black
+
+      case None =>
+        // Computador não tem jogadas válidas
+        isGameOver = true
+        val winner = if (currentPlayer == Stone.Black) "BRANCO" else "PRETO"
+        statusLabel.setText(s"Computador sem movimentos! $winner venceu!")
+        statusLabel.setTextFill(Color.RED)
+    }
+    processingMove = false
+    render()
+    checkGameOver()
+
+    if (!isGameOver && !isComputerTurn) {
+      startTimerIfHumanTurn()
+      statusLabel.setText(s"Turno: ${if (currentPlayer == Stone.Black) "PRETO" else "BRANCO"}")
+      statusLabel.setTextFill(Color.WHITE)
+    }
+  }
+
+  // Termina o turno
+  private def finishHumanTurn(): Unit = {
+    selected = None
+    isInJump = false
+    currentPlayer = if (currentPlayer == Stone.Black) Stone.White else Stone.Black
+    checkGameOver()
+    render()
+    stopTimer()
+    if (!isGameOver && isComputerTurn && !isPvP) {
+      computerMove()
+    } else if (!isGameOver) {
+      startTimerIfHumanTurn()
+      statusLabel.setText(s"Turno: ${if (currentPlayer == Stone.Black) "PRETO" else "BRANCO"}")
+      statusLabel.setTextFill(Color.WHITE)
+    }
+  }
+
+  private def render(): Unit = {
     boardGrid.getChildren.clear()
     drawBoard(0, 0)
   }
 
   @tailrec
   private def drawBoard(l: Int, c: Int): Unit = {
-    if (l >= size) () // Condição de paragem
-    else if (c >= size) drawBoard(l + 1, 0) // Avança linha
+    if (l >= size) ()
+    else if (c >= size) drawBoard(l + 1, 0)
     else {
       boardGrid.add(createCell(l, c), c, l)
-      drawBoard(l, c + 1) // Avança coluna
+      drawBoard(l, c + 1)
     }
   }
 
@@ -61,14 +189,11 @@ class GameController {
 
     val coord = (l, c)
     val isSelected = selected.contains(coord)
-
-    // Verifica se esta casa é um destino válido para a peça selecionada
     val isValidDestination = selected match {
       case Some(from) => GameLogic.getValidMovesForPiece(board, from, size).contains(coord)
       case None => false
     }
 
-    // Devolve a cor verde para saberes para onde podes saltar
     val bgColor = if (isSelected) "#ffeb3b"
     else if (isValidDestination) "#a5d6a7"
     else "#d7ccc8"
@@ -80,69 +205,65 @@ class GameController {
         val circle = new Circle(18)
         circle.setFill(if (s == Stone.Black) Color.BLACK else Color.WHITE)
         cell.getChildren.add(circle)
-      case None => () // Casa vazia
+      case None => ()
     }
 
-    if (!isGameOver) {
+    if (!isGameOver && !processingMove && isHumanTurn) {
       cell.setOnMouseClicked((_: MouseEvent) => handleSelect(l, c))
     }
     cell
   }
 
   private def handleSelect(l: Int, c: Int): Unit = {
+    if (isGameOver || processingMove || !isHumanTurn) return
     val clicked = (l, c)
 
     selected match {
       case None =>
-        // Seleciona a peça se existir e pertencer ao jogador atual
-        board.get(clicked) match {
-          case Some(s) if s == currentPlayer => selected = Some(clicked)
-          case _ => ()
-        }
+        if (!isInJump){
+          board.get(clicked) match {
+            case Some(s) if s == currentPlayer => selected = Some(clicked)
+            case _ => ()
+          }
+    }
 
       case Some(from) =>
         if (from == clicked) {
-          // O jogador clicou na peça que já estava selecionada (amarela) - Termina o turno voluntariamente
-          currentPlayer = if (currentPlayer == Stone.Black) Stone.White else Stone.Black
-          selected = None
-          checkGameOver()
+          finishHumanTurn()
         } else {
-          // AQUI ESTAVA O ERRO: O bloco "else" estava em falta!
-          // Agora ele verifica corretamente se a casa clicada é um movimento válido
           val moves = GameLogic.getValidMovesForPiece(board, from, size)
-
           if (moves.contains(clicked)) {
+            pushHistory()
             val (newBoardOpt, newOpen) = GameLogic.play(board, currentPlayer, from, clicked, openCoords)
-
             newBoardOpt match {
               case Some(newBoard) =>
                 board = newBoard
                 openCoords = newOpen
-
                 val futureMoves = GameLogic.getValidMovesForPiece(board, clicked, size)
                 if (futureMoves.nonEmpty) {
-                  // Se ainda tiver saltos, mantém a mesma peça selecionada
                   selected = Some(clicked)
-                  statusLabel.setText("Podes saltar outra vez! Continua ou clica na tua peça para parar.")
+                  isInJump = true
+                  statusLabel.setText("Podes saltar outra vez! Clique na peça para parar.")
                   statusLabel.setTextFill(Color.YELLOW)
                 } else {
-                  // Acabaram os saltos, muda o jogador
-                  currentPlayer = if (currentPlayer == Stone.Black) Stone.White else Stone.Black
-                  selected = None
-                  checkGameOver()
+                  isInJump = false
+                  finishHumanTurn()
                 }
               case None => ()
             }
           } else {
-            // Clicou noutra casa (inválida). Se for uma peça do próprio jogador, muda a seleção.
+            if (isInJump){
+              statusLabel.setText("Clica na mesma peça para parar ou continua os saltos com a mesma peça")
+              statusLabel.setTextFill(Color.ORANGE)
+            }else{
             board.get(clicked) match {
               case Some(s) if s == currentPlayer => selected = Some(clicked)
               case _ => selected = None
             }
+            }
           }
         }
     }
-    // Atualiza a visualização com o novo estado (quer tenha havido movimento, seleção ou mudança de turno)
     render()
   }
 
@@ -153,7 +274,6 @@ class GameController {
       statusLabel.setText(s"FIM DE JOGO! O jogador $vencedor venceu!")
       statusLabel.setTextFill(Color.RED)
     } else {
-      // Atualiza a Label para o turno normal do próximo jogador
       val corTexto = if (currentPlayer == Stone.Black) "PRETO" else "BRANCO"
       statusLabel.setText(s"Turno: $corTexto")
       statusLabel.setTextFill(Color.WHITE)
@@ -164,5 +284,197 @@ class GameController {
     val root = FXMLLoader.load[Parent](getClass.getResource("Menu.fxml"))
     val stage = event.getSource.asInstanceOf[Node].getScene.getWindow.asInstanceOf[Stage]
     stage.setScene(new Scene(root))
+  }
+
+  @FXML def onSave(event: ActionEvent): Unit = {
+    if (isInJump) {
+      statusLabel.setText("Não podes guardar a meio de uma jogada! Termina os saltos primeiro.")
+      statusLabel.setTextFill(Color.ORANGE)
+      return
+    }
+    val humanColorOpt: Option[Stone] = if (isPvP) None else Some(humanColor)
+
+    val data = SaveLoadLogic.saveGameState(
+      board = board,
+      size = size,
+      currentPlayer = currentPlayer,
+      timeLimit = timeLimitMs,
+      openCoords = openCoords,
+      rand = rand,
+      humanColor = humanColorOpt,
+      selected = selected
+    )
+    try {
+      val pw = new java.io.PrintWriter(new java.io.File("savegame.txt"))
+      pw.write(data)
+      pw.close()
+      statusLabel.setText("Jogo guardado em savegame.txt")
+      statusLabel.setTextFill(Color.GREEN)
+    } catch {
+      case e: Exception =>
+        statusLabel.setText(s"Erro ao guardar: ${e.getMessage}")
+        statusLabel.setTextFill(Color.RED)
+    }
+  }
+
+  @FXML def onLoad(event: ActionEvent): Unit = {
+    if (isInJump) {
+      statusLabel.setText("Não podes carregar a meio de uma jogada! Termina os saltos primeiro.")
+      statusLabel.setTextFill(Color.ORANGE)
+      return
+    }
+    computerDelay.foreach(_.stop())
+    computerDelay = None
+    stopTimer()
+    processingMove = false
+    try {
+      val source = scala.io.Source.fromFile("savegame.txt")
+      val content = source.mkString
+      source.close()
+
+      SaveLoadLogic.loadGameState(content) match {
+        case Some((loadedBoard, loadedSize, loadedPlayer, loadedTimeLimit, loadedOpenCoords, loadedRand, loadedHumanColor, loadedSelected)) =>
+          // Atualiza o estado do jogo
+          this.board = loadedBoard
+          this.size = loadedSize
+          this.currentPlayer = loadedPlayer
+          this.timeLimitMs = loadedTimeLimit
+          this.openCoords = loadedOpenCoords
+          this.rand = loadedRand
+          this.isGameOver = false
+          this.processingMove = false
+          this.selected = loadedSelected
+          this.isInJump = loadedSelected.isDefined
+
+          loadedHumanColor match {
+            case Some(color) =>
+              this.isPvP = false
+              this.humanColor = color
+              this.computerColor = if (color == Stone.Black) Stone.White else Stone.Black
+            case None =>
+              this.isPvP = true// modo PvP
+          }
+
+          this.history = Nil
+
+          render()
+          checkGameOver()
+          statusLabel.setText("Jogo carregado com sucesso!")
+          statusLabel.setTextFill(Color.GREEN)
+
+          // Se a vez for do computador, inicia jogada
+          if (!isGameOver && isComputerTurn && !isInJump) computerMove()
+          else if (!isGameOver && !isComputerTurn) startTimerIfHumanTurn()
+
+        case None =>
+          statusLabel.setText("Erro: ficheiro de save inválido")
+          statusLabel.setTextFill(Color.RED)
+      }
+    } catch {
+      case _: java.io.FileNotFoundException =>
+        statusLabel.setText("Nenhum save encontrado (savegame.txt)")
+        statusLabel.setTextFill(Color.RED)
+      case e: Exception =>
+        statusLabel.setText(s"Erro ao carregar: ${e.getMessage}")
+        statusLabel.setTextFill(Color.RED)
+    }
+  }
+  @FXML def onUndo(event: ActionEvent): Unit = {
+    if (selected.isDefined && isInJump) {
+      statusLabel.setText("Não podes fazer undo a meio de uma jogada! Termina os saltos primeiro.")
+      statusLabel.setTextFill(Color.ORANGE)
+      return
+    }
+    if (isGameOver) {
+      statusLabel.setText("O Jogo Terminou. Não é possível fazer Undo")
+      return
+    }
+
+    if (processingMove) {
+      statusLabel.setText("Aguarda a jogada do computador terminar.")
+      return
+    }
+
+
+    history match {
+      case Nil => statusLabel.setText("Nada para dar Undo")
+      case (b, oc, p, r) :: rest =>
+        board = b
+        openCoords = oc
+        currentPlayer = p
+        rand = r
+        history = rest
+        selected = None
+        isInJump = false
+        processingMove = false
+        render()
+        checkGameOver()
+        stopTimer()
+        statusLabel.setText(s"Undo efetuado. Turno: ${if (currentPlayer == Stone.Black) "PRETO" else "BRANCO"}")
+        if (!isGameOver && currentPlayer == computerColor) {
+          val delay = new javafx.animation.Timeline(
+            new javafx.animation.KeyFrame(javafx.util.Duration.millis(1000), (_: ActionEvent) => {
+              if (!isGameOver && isComputerTurn && !processingMove) {
+                computerMove()
+              }
+            })
+          )
+          delay.setCycleCount(1)
+          delay.play()
+        }
+    }
+  }
+
+  private def startTimerIfHumanTurn(): Unit = {
+    stopTimer()
+    if(isGameOver) return
+    val needTimer = if(isPvP) true else !isComputerTurn
+    if (needTimer) {
+      timeRemainingMs = timeLimitMs
+      updateTimerLabel()
+      val timeline = new Timeline(
+        new KeyFrame(Duration.seconds(1), (_: ActionEvent) => tick())
+      )
+      timeline.setCycleCount(-1)
+      timeline.play()
+      timer = Some(timeline)
+    } else {
+      if (timerLabel != null) timerLabel.setText("Tempo: -- s")
+    }
+  }
+
+  private def stopTimer(): Unit = {
+    timer.foreach(_.stop())
+    timer = None
+  }
+
+  private def tick(): Unit = {
+    if (!isGameOver && !isComputerTurn) {
+      timeRemainingMs -= 1000
+      updateTimerLabel()
+      if (timeRemainingMs <= 0) {
+        stopTimer()
+        timeoutLose()
+      }
+    } else {
+      stopTimer()
+    }
+  }
+
+  private def updateTimerLabel(): Unit = {
+    if (timerLabel != null) {
+      val seconds = math.max(0, timeRemainingMs / 1000)
+      timerLabel.setText(f"Tempo: $seconds%d s")
+      if (seconds <= 5) timerLabel.setTextFill(Color.RED)
+      else timerLabel.setTextFill(Color.YELLOW)
+    }
+  }
+
+  private def timeoutLose(): Unit = {
+    isGameOver = true
+    val winner = if (currentPlayer == Stone.Black) "BRANCO" else "PRETO"
+    statusLabel.setText(s"TEMPO ESGOTADO! $winner venceu!")
+    statusLabel.setTextFill(Color.RED)
+    stopTimer()
   }
 }
