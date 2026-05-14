@@ -28,6 +28,8 @@ class GameController {
   private var history: List[(Board, List[Coord2D], Stone, MyRandom)] = Nil
   private var rand: MyRandom = MyRandom(System.currentTimeMillis())
 
+  private var isInJump: Boolean = false
+
   def initGame(boardSize: Int, hole: HolePosition): Unit = {
     this.size = boardSize
     this.board = GameLogic.initBoard(size, hole)
@@ -121,6 +123,7 @@ class GameController {
   // Termina o turno
   private def finishHumanTurn(): Unit = {
     selected = None
+    isInJump = false
     currentPlayer = if (currentPlayer == Stone.Black) Stone.White else Stone.Black
     checkGameOver()
     render()
@@ -184,10 +187,12 @@ class GameController {
 
     selected match {
       case None =>
-        board.get(clicked) match {
-          case Some(s) if s == currentPlayer => selected = Some(clicked)
-          case _ => ()
-        }
+        if (!isInJump){
+          board.get(clicked) match {
+            case Some(s) if s == currentPlayer => selected = Some(clicked)
+            case _ => ()
+          }
+    }
 
       case Some(from) =>
         if (from == clicked) {
@@ -204,17 +209,24 @@ class GameController {
                 val futureMoves = GameLogic.getValidMovesForPiece(board, clicked, size)
                 if (futureMoves.nonEmpty) {
                   selected = Some(clicked)
+                  isInJump = true
                   statusLabel.setText("Podes saltar outra vez! Clique na peça para parar.")
                   statusLabel.setTextFill(Color.YELLOW)
                 } else {
+                  isInJump = false
                   finishHumanTurn()
                 }
               case None => ()
             }
           } else {
+            if (isInJump){
+              statusLabel.setText("Clica na mesma peça para parar ou continua os saltos com a mesma peça")
+              statusLabel.setTextFill(Color.ORANGE)
+            }else{
             board.get(clicked) match {
               case Some(s) if s == currentPlayer => selected = Some(clicked)
               case _ => selected = None
+            }
             }
           }
         }
@@ -242,7 +254,7 @@ class GameController {
   }
 
   @FXML def onUndo(event: ActionEvent): Unit = {
-    if (selected.isDefined && currentPlayer == humanColor) {
+    if (selected.isDefined && isInJump) {
       statusLabel.setText("Não podes fazer undo a meio de uma jogada! Termina os saltos primeiro.")
       statusLabel.setTextFill(Color.ORANGE)
       return
@@ -252,7 +264,11 @@ class GameController {
       return
     }
 
-    processingMove = false
+    if (processingMove) {
+      statusLabel.setText("Aguarda a jogada do computador terminar.")
+      return
+    }
+
 
     history match {
       case Nil => statusLabel.setText("Nada para dar Undo")
@@ -263,6 +279,8 @@ class GameController {
         rand = r
         history = rest
         selected = None
+        isInJump = false
+        processingMove = false
         render()
         checkGameOver()
         statusLabel.setText(s"Undo efetuado. Turno: ${if (currentPlayer == Stone.Black) "PRETO" else "BRANCO"}")
