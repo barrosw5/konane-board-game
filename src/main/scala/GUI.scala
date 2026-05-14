@@ -5,7 +5,7 @@ import javafx.stage.Stage
 
 class GUI extends Application {
   override def start(primaryStage: Stage): Unit = {
-    primaryStage.setTitle("Kōnane")
+    primaryStage.setTitle("Konane")
 
     // Inicia a aplicação a partir do Menu
     val fxmlLoader = new FXMLLoader(getClass.getResource("Menu.fxml"))

@@ -25,8 +25,7 @@ class GameController {
 
   private val humanColor: Stone = Stone.Black
   private val computerColor: Stone = Stone.White
-
-  // Gerador de aleatoriedade
+  private var history: List[(Board, List[Coord2D], Stone, MyRandom)] = Nil
   private var rand: MyRandom = MyRandom(System.currentTimeMillis())
 
   def initGame(boardSize: Int, hole: HolePosition): Unit = {
@@ -44,7 +43,7 @@ class GameController {
     }
     this.selected = None
     this.openCoords = List(p1, p2)
-    this.currentPlayer = Stone.Black   // Pretas começam
+    this.currentPlayer = Stone.Black // Pretas começam
     this.isGameOver = false
     this.processingMove = false
 
@@ -58,15 +57,23 @@ class GameController {
 
   private def isComputerTurn: Boolean = currentPlayer == computerColor
 
+  private def pushHistory(): Unit = {
+    history = (board, openCoords, currentPlayer, rand) :: history
+  }
+
   private def computerMove(): Unit = {
+    if (currentPlayer != computerColor){
+      processingMove = false
+      return
+    }
     if (processingMove || isGameOver) return
     processingMove = true
     statusLabel.setText("Computador a pensar...")
     statusLabel.setTextFill(Color.CYAN)
 
-    // Pequeno atraso para dar feedback visual
+    // Pequeno atraso para ver a jogada do computador
     val delay = new javafx.animation.Timeline(
-      new javafx.animation.KeyFrame(javafx.util.Duration.millis(300), (_: ActionEvent) => {
+      new javafx.animation.KeyFrame(javafx.util.Duration.millis(1500), (_: ActionEvent) => {
         doComputerMove()
       })
     )
@@ -79,6 +86,8 @@ class GameController {
       processingMove = false
       return
     }
+
+    pushHistory()
 
     val (newBoardOpt, newRand, newOpen, _) =
       GameLogic.playRandomly(board, rand, currentPlayer, openCoords, GameLogic.randomMove)
@@ -109,7 +118,7 @@ class GameController {
     }
   }
 
-  // Termina o turno 
+  // Termina o turno
   private def finishHumanTurn(): Unit = {
     selected = None
     currentPlayer = if (currentPlayer == Stone.Black) Stone.White else Stone.Black
@@ -186,6 +195,7 @@ class GameController {
         } else {
           val moves = GameLogic.getValidMovesForPiece(board, from, size)
           if (moves.contains(clicked)) {
+            pushHistory()
             val (newBoardOpt, newOpen) = GameLogic.play(board, currentPlayer, from, clicked, openCoords)
             newBoardOpt match {
               case Some(newBoard) =>
@@ -229,5 +239,44 @@ class GameController {
     val root = FXMLLoader.load[Parent](getClass.getResource("Menu.fxml"))
     val stage = event.getSource.asInstanceOf[Node].getScene.getWindow.asInstanceOf[Stage]
     stage.setScene(new Scene(root))
+  }
+
+  @FXML def onUndo(event: ActionEvent): Unit = {
+    if (selected.isDefined && currentPlayer == humanColor) {
+      statusLabel.setText("Não podes fazer undo a meio de uma jogada! Termina os saltos primeiro.")
+      statusLabel.setTextFill(Color.ORANGE)
+      return
+    }
+    if (isGameOver) {
+      statusLabel.setText("O Jogo Terminou. Não é possível fazer Undo")
+      return
+    }
+
+    processingMove = false
+
+    history match {
+      case Nil => statusLabel.setText("Nada para dar Undo")
+      case (b, oc, p, r) :: rest =>
+        board = b
+        openCoords = oc
+        currentPlayer = p
+        rand = r
+        history = rest
+        selected = None
+        render()
+        checkGameOver()
+        statusLabel.setText(s"Undo efetuado. Turno: ${if (currentPlayer == Stone.Black) "PRETO" else "BRANCO"}")
+        if (!isGameOver && currentPlayer == computerColor) {
+          val delay = new javafx.animation.Timeline(
+            new javafx.animation.KeyFrame(javafx.util.Duration.millis(1000), (_: ActionEvent) => {
+              if (!isGameOver && currentPlayer == computerColor && !processingMove) {
+                computerMove()
+              }
+            })
+          )
+          delay.setCycleCount(1)
+          delay.play()
+        }
+    }
   }
 }
