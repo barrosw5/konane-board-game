@@ -39,6 +39,14 @@ object TUI {
         print("> ")
     }
     
+    def showDifficultyMenuPrompt(): Unit = {
+        println("\nChoose AI Difficulty:")
+        println("1 - Easy (Random Moves)")
+        println("2 - Intermediate (Max Captures)")
+        println("3 - Advanced (Future Mobility)")
+        print("> ")
+    }
+    
     def showValidMoves(moves: List[Coord2D]): Unit = {
         println("\nValid destinations:")
         
