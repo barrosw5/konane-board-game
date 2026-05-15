@@ -317,7 +317,7 @@ class GameController {
     }
   }
 
-  @FXML def onLoad(event: ActionEvent): Unit = {
+   def loadGameFromSave(): Unit = {
     if (isInJump) {
       statusLabel.setText("Não podes carregar a meio de uma jogada! Termina os saltos primeiro.")
       statusLabel.setTextFill(Color.ORANGE)

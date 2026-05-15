@@ -9,6 +9,8 @@ class MenuController {
   @FXML private var holeComboBox: ComboBox[String] = _
   @FXML private var timeLimitField: TextField = _
   @FXML private var colorComboBox: ComboBox[String] = _
+  @FXML private var sizeComboBox: ComboBox[String] = _
+
 
   @FXML
   def initialize(): Unit = {
@@ -22,22 +24,22 @@ class MenuController {
     // Deixar o "Centro" selecionado por defeito
     holeComboBox.getSelectionModel.selectFirst()
 
+    sizeComboBox.getItems.addAll("4", "6", "8", "10")
+    sizeComboBox.getSelectionModel.selectFirst()
+
     colorComboBox.getItems.addAll(
-      "Jogar com Pretas (primeiro)",
+      "Jogar com Pretas",
       "Jogar com Brancas",
       "Dois Humanos (PvP)"
     )
     colorComboBox.getSelectionModel.selectFirst()
   }
 
-  @FXML def onPlay4x4(e: ActionEvent): Unit = loadGame(4, e)
 
-  @FXML def onPlay6x6(e: ActionEvent): Unit = loadGame(6, e)
-
-  @FXML def onPlay8x8(e: ActionEvent): Unit = loadGame(8, e)
-
-  @FXML def onPlay10x10(e: ActionEvent): Unit = loadGame(10, e)
-
+  @FXML def onStartGame(event: ActionEvent): Unit = {
+    val size = sizeComboBox.getValue.toInt
+    loadGame(size, event)
+  }
   private def getSelectedHole(): HolePosition = {
     holeComboBox.getValue match {
       case "Centro" => HolePosition.Center
@@ -61,6 +63,16 @@ class MenuController {
     stage.setScene(new Scene(root))
   }
 
+  @FXML def onLoadGame(event: ActionEvent): Unit = {
+    val loader = new FXMLLoader(getClass.getResource("Game.fxml"))
+    val root: Parent = loader.load()
+    val controller = loader.getController[GameController]()
+    controller.loadGameFromSave() // método novo que inicializa a partir do ficheiro
+    val stage = event.getSource.asInstanceOf[Node].getScene.getWindow.asInstanceOf[Stage]
+    stage.setScene(new Scene(root))
+  }
+
+
   private def getTimeLimit(): Long = {
     try {
       val secs = timeLimitField.getText.toDouble
@@ -72,7 +84,7 @@ class MenuController {
 
   private def getHumanColor(): Option[Stone] = {
     colorComboBox.getValue match {
-      case "Jogar com Pretas (primeiro)" => Some(Stone.Black)
+      case "Jogar com Pretas" => Some(Stone.Black)
       case "Jogar com Brancas" => Some(Stone.White)
       case _ => None // Dois Humanos
     }

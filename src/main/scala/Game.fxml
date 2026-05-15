@@ -33,7 +33,6 @@
         <HBox alignment="CENTER" spacing="20.0" BorderPane.alignment="CENTER">
             <children>
                 <Button onAction="#onSave" text="Save" />
-                <Button onAction="#onLoad" text="Load" />
                 <Button onAction="#onUndo" text="Undo" />
                 <Button onAction="#onBackToMenu" text="Sair para o Menu" />
             </children>
