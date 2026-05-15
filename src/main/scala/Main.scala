@@ -1,24 +1,24 @@
 import scala.annotation.tailrec
 
 object Main extends App {
-    
+
     val initialRandom = saveRandom.loadRandomFromFile("seed.txt")
     menuLoop(initialRandom)
-    
+
     @tailrec
     def menuLoop(currentRand: MyRandom): Unit = {
         TUI.showMainMenuPrompt()
         val userInput = TUI.getUserInput()
-        
+
         userInput match {
             case "N" =>
                 val humanColor = colorChoiceLoop()
                 val size = sizeChoiceLoop()
                 val holeChoice = holeChoiceLoop()
                 val timeLimit = timeLimitChoiceLoop()
-                
+
                 val initialBoard = GameLogic.initBoard(size, holeChoice)
-                
+
                 val (p1, p2) = holeChoice match {
                     case HolePosition.Center =>
                         val m = size / 2
@@ -28,13 +28,19 @@ object Main extends App {
                     case HolePosition.BottomLeft => ((size - 1, 0), (size - 1, 1))
                     case HolePosition.BottomRight => ((size - 1, size - 1), (size - 1, size - 2))
                 }
-                
+
                 println(s"\n=== Starting New Game (${size}x${size}) ===")
+<<<<<<< Updated upstream
                 
                 val finalRand = gameLoop(initialBoard, size, currentRand, List(p1, p2), Stone.Black, timeLimit, Nil, humanColor)
                 
+=======
+
+                val finalRand = gameLoop(initialBoard, size, currentRand, List(p1, p2), Stone.Black, timeLimit, Nil, humanColor, difficulty)
+
+>>>>>>> Stashed changes
                 menuLoop(finalRand)
-            
+
             case "L" =>
                 val fileContentOpt: Option[String] = try {
                     val source = scala.io.Source.fromFile("savegame.txt")
@@ -49,11 +55,11 @@ object Main extends App {
                         println(s"\n[Error] Could not read file: ${e.getMessage}")
                         None
                 }
-                
+
                 fileContentOpt match {
                     case Some(fileContent) =>
                         SaveLoadLogic.loadGameState(fileContent) match {
-                            case Some((loadedBoard, loadedSize, loadedPlayer, loadedLimit, loadedOpenCoords, loadedRand, loadedHumanColor,_)) =>
+                            case Some((loadedBoard, loadedSize, loadedPlayer, loadedLimit, loadedOpenCoords, loadedRand, loadedHumanColor,_,_)) =>
                                 println("\n=== Game Loaded Successfully! ===")
                                 val finalRand = gameLoop(loadedBoard, loadedSize, loadedRand, loadedOpenCoords, loadedPlayer, loadedLimit, Nil, loadedHumanColor)
                                 menuLoop(finalRand)
@@ -64,22 +70,22 @@ object Main extends App {
                     case None =>
                         menuLoop(currentRand)
                 }
-            
+
             case "Q" =>
                 saveRandom.saveRandomToFile("seed.txt", currentRand)
                 println("\nExiting Kōnane. Goodbye!")
-            
+
             case _ =>
                 println("\n[Error] Invalid option.")
                 menuLoop(currentRand)
         }
     }
-    
+
     @tailrec
     def colorChoiceLoop(): Option[Stone] = {
         TUI.showColorMenuPrompt()
         val input = TUI.getUserInput()
-        
+
         input match {
             case "1" => Some(Stone.Black)
             case "2" => Some(Stone.White)
@@ -89,8 +95,25 @@ object Main extends App {
                 colorChoiceLoop()
         }
     }
-    
+
     @tailrec
+<<<<<<< Updated upstream
+=======
+    def difficultyChoiceLoop(): Int = {
+        TUI.showDifficultyMenuPrompt()
+        val input = TUI.getUserInput()
+        input match {
+            case "1" => 1
+            case "2" => 2
+            case "3" => 3
+            case _ =>
+                println("\n[Error] Invalid choice. Please choose 1, 2, or 3.")
+                difficultyChoiceLoop()
+        }
+    }
+
+    @tailrec
+>>>>>>> Stashed changes
     def sizeChoiceLoop(): Int = {
         TUI.showSizeMenuPrompt()
         val input = TUI.getUserInput()
@@ -104,7 +127,7 @@ object Main extends App {
                 sizeChoiceLoop()
         }
     }
-    
+
     @tailrec
     def holeChoiceLoop(): HolePosition = {
         TUI.showHoleMenuPrompt()
@@ -120,7 +143,7 @@ object Main extends App {
                 holeChoiceLoop()
         }
     }
-    
+
     @tailrec
     def timeLimitChoiceLoop(): Long = {
         println("\nChoose how much time you got for each play (in seconds):")
@@ -133,37 +156,53 @@ object Main extends App {
                 timeLimitChoiceLoop()
         }
     }
-    
+
     @tailrec
     def gameLoop(board: Board, size: Int, rand: MyRandom, openCoords: List[Coord2D], currentPlayer: Stone, timeLimit: Long, lstBoardsHistory: List[(Board, List[Coord2D], Stone, MyRandom)], humanColor: Option[Stone]): MyRandom = {
         TUI.printBoard(board, size)
-        
+
         if (!GameLogic.hasValidMoves(board, currentPlayer, size)) {
             val winner = if (currentPlayer == Stone.Black) "White" else "Black"
             println(s"\n[Game Over] $currentPlayer has no moves left. $winner wins!")
             rand
         } else {
             TUI.showPlayerTurn(currentPlayer)
-            
+
             // Verifica se é a vez da máquina
             val isMachineTurn = humanColor match {
                 case Some(color) if color != currentPlayer => true
                 case _ => false
             }
-            
+
             if (isMachineTurn) {
                 println("\n>>> The machine is thinking...")
                 Thread.sleep(1500) // Pausa para melhorar a UX na consola
-                
+
                 val newHistory = GameLogic.storeBoard(lstBoardsHistory, board, openCoords, currentPlayer, rand)
+<<<<<<< Updated upstream
                 val (newBoardOpt, nextRand, newOpen, toOpt) = GameLogic.playRandomly(board, rand, currentPlayer, openCoords, GameLogic.randomMove)
                 
+=======
+
+                // Escolhe a função de AI consoante a dificuldade
+                val (newBoardOpt, nextRand, newOpen, toOpt) = difficulty match {
+                    case 1 => AILogic.playEasy(board, rand, currentPlayer, openCoords)
+                    case 2 => AILogic.playIntermediate(board, rand, currentPlayer, size, openCoords)
+                    case 3 => AILogic.playAdvanced(board, rand, currentPlayer, size, openCoords)
+                }
+
+>>>>>>> Stashed changes
                 newBoardOpt match {
                     case Some(nb) =>
                         println(s"\n[Result] The computer randomly moved a piece to ${toOpt.get}!\n")
                         val nextPlayer = if (currentPlayer == Stone.Black) Stone.White else Stone.Black
+<<<<<<< Updated upstream
                         gameLoop(nb, size, nextRand, newOpen, nextPlayer, timeLimit, newHistory, humanColor)
                     
+=======
+                        gameLoop(nb, size, nextRand, newOpen, nextPlayer, timeLimit, newHistory, humanColor, difficulty)
+
+>>>>>>> Stashed changes
                     case None =>
                         println("\n[Result] This player has no valid moves left. Game Over!\n")
                         gameLoop(board, size, nextRand, openCoords, currentPlayer, timeLimit, lstBoardsHistory, humanColor)
@@ -174,7 +213,7 @@ object Main extends App {
                 val input = TUI.getUserInput()
                 val endTime = System.currentTimeMillis()
                 val elapsed = endTime - startTime
-                
+
                 if (elapsed > timeLimit) {
                     println(s"\n[Timeout] You took ${elapsed / 1000.0}s! The time limit was ${timeLimit / 1000.0}s.")
                     val winner = if (currentPlayer == Stone.Black) "White" else "Black"
@@ -188,7 +227,7 @@ object Main extends App {
                             val rFrom = TUI.getUserInput().toIntOption
                             TUI.showCoordinatePrompt("piece column")
                             val cFrom = TUI.getUserInput().toIntOption
-                            
+
                             (rFrom, cFrom) match {
                                 case (Some(r), Some(c)) =>
                                     val from = (r, c)
@@ -206,7 +245,7 @@ object Main extends App {
                                                         val to = moves(idx - 1)
                                                         val newHistory = GameLogic.storeBoard(lstBoardsHistory, board, openCoords, currentPlayer, rand)
                                                         val (newBoardOpt, newOpen) = GameLogic.play(board, currentPlayer, from, to, openCoords)
-                                                        
+
                                                         newBoardOpt match {
                                                             case Some(nb) =>
                                                                 val nextPlayer = if (currentPlayer == Stone.Black) Stone.White else Stone.Black
@@ -231,12 +270,22 @@ object Main extends App {
                                     println("\n[Error] Invalid coordinates.\n")
                                     gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory, humanColor)
                             }
-                        
+
                         case "M" =>
                             // Mantido como "batota" ou dica para o jogador humano pedir à máquina para jogar por ele
                             val newHistory = GameLogic.storeBoard(lstBoardsHistory, board, openCoords, currentPlayer, rand)
+<<<<<<< Updated upstream
                             val (newBoardOpt, nextRand, newOpen, toOpt) = GameLogic.playRandomly(board, rand, currentPlayer, openCoords, GameLogic.randomMove)
                             
+=======
+
+                            val (newBoardOpt, nextRand, newOpen, toOpt) = difficulty match {
+                                case 1 => AILogic.playEasy(board, rand, currentPlayer, openCoords)
+                                case 2 => AILogic.playIntermediate(board, rand, currentPlayer, size, openCoords)
+                                case 3 => AILogic.playAdvanced(board, rand, currentPlayer, size, openCoords)
+                            }
+
+>>>>>>> Stashed changes
                             newBoardOpt match {
                                 case Some(nb) =>
                                     println(s"\n[Result] The computer randomly moved a piece to ${toOpt.get}!\n")
@@ -246,7 +295,7 @@ object Main extends App {
                                     println("\n[Result] This player has no valid moves left. Game Over!\n")
                                     gameLoop(board, size, nextRand, openCoords, currentPlayer, timeLimit, lstBoardsHistory, humanColor)
                             }
-                        
+
                         case "C" =>
                             TUI.showCoordinatePrompt("row")
                             val rowStr = TUI.getUserInput()
@@ -261,7 +310,7 @@ object Main extends App {
                                     println("\n[Error] Invalid coordinates. Please enter integer numbers.\n")
                                     gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory, humanColor)
                             }
-                        
+
                         case "U" =>
                             TUI.showTextPrompt("Are you sure? (y)es or (n)o ")
                             val choice = TUI.getUserInput()
@@ -281,9 +330,9 @@ object Main extends App {
                                     println("\n[Error] Invalid option.\n")
                                     gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory, humanColor)
                             }
-                        
+
                         case "S" =>
-                            val fileData = SaveLoadLogic.saveGameState(board, size, currentPlayer, timeLimit, openCoords, rand, humanColor)
+                            val fileData = SaveLoadLogic.saveGameState(board, size, currentPlayer, timeLimit, openCoords, rand, humanColor, None, difficulty)                            
                             try {
                                 val pw = new java.io.PrintWriter(new java.io.File("savegame.txt"))
                                 pw.write(fileData)
@@ -293,12 +342,17 @@ object Main extends App {
                                 case e: Exception =>
                                     println(s"\n[Error] Failed to save game: ${e.getMessage}\n")
                             }
+<<<<<<< Updated upstream
                             gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory, humanColor)
                         
+=======
+                            gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory, humanColor, difficulty)
+
+>>>>>>> Stashed changes
                         case "Q" =>
                             println("\nReturning to Main Menu...")
                             rand
-                        
+
                         case _ =>
                             println("\n[Error] Invalid option.\n")
                             gameLoop(board, size, rand, openCoords, currentPlayer, timeLimit, lstBoardsHistory, humanColor)

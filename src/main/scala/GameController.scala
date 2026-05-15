@@ -42,13 +42,16 @@ class GameController {
   private def isHumanTurn: Boolean = if (isPvP) true else currentPlayer == humanColor
   private def isComputerTurn: Boolean = !isPvP && currentPlayer == computerColor
 
+  private var difficulty : Int = 0
 
 
-  def initGame(boardSize: Int, hole: HolePosition, timeLimitMs: Long, humanColorOpt : Option[Stone]): Unit = {
+
+  def initGame(boardSize: Int, hole: HolePosition, timeLimitMs: Long, humanColorOpt : Option[Stone], difficulty: Int): Unit = {
     this.size = boardSize
     this.board = GameLogic.initBoard(size, hole)
     this.timeLimitMs = timeLimitMs
     this.isPvP = humanColorOpt.isEmpty
+    this.difficulty = difficulty
 
     if (isPvP) {
       // Modo dois humanos: cores fixas (Pretas vs Brancas), computador nunca joga
@@ -113,6 +116,19 @@ class GameController {
     computerDelay = Some(delay)
   }
 
+  private def computerMoveLogic(): (Option[Board], MyRandom, List[Coord2D], Option[Coord2D]) = {
+    difficulty match {
+      case 0 => // Fácil
+        GameLogic.playRandomly(board, rand, currentPlayer, openCoords, GameLogic.randomMove)
+      case 1 => // Intermédio
+        AILogic.playIntermediate(board, rand, currentPlayer, size, openCoords)
+      case 2 => // Avançado
+        AILogic.playAdvanced(board, rand, currentPlayer, size, openCoords)
+      case _ => // fallback
+        GameLogic.playRandomly(board, rand, currentPlayer, openCoords, GameLogic.randomMove)
+    }
+  }
+
   private def doComputerMove(): Unit = {
     if (isGameOver) {
       processingMove = false
@@ -122,8 +138,7 @@ class GameController {
     pushHistory()
 
     val (newBoardOpt, newRand, newOpen, _) =
-      GameLogic.playRandomly(board, rand, currentPlayer, openCoords, GameLogic.randomMove)
-
+      computerMoveLogic()
     newBoardOpt match {
       case Some(newBoard) =>
         board = newBoard
@@ -302,7 +317,8 @@ class GameController {
       openCoords = openCoords,
       rand = rand,
       humanColor = humanColorOpt,
-      selected = selected
+      selected = selected,
+      difficulty = difficulty
     )
     try {
       val pw = new java.io.PrintWriter(new java.io.File("savegame.txt"))
@@ -333,7 +349,7 @@ class GameController {
       source.close()
 
       SaveLoadLogic.loadGameState(content) match {
-        case Some((loadedBoard, loadedSize, loadedPlayer, loadedTimeLimit, loadedOpenCoords, loadedRand, loadedHumanColor, loadedSelected)) =>
+        case Some((loadedBoard, loadedSize, loadedPlayer, loadedTimeLimit, loadedOpenCoords, loadedRand, loadedHumanColor, loadedSelected, loadedDifficulty)) =>
           // Atualiza o estado do jogo
           this.board = loadedBoard
           this.size = loadedSize
@@ -345,6 +361,7 @@ class GameController {
           this.processingMove = false
           this.selected = loadedSelected
           this.isInJump = loadedSelected.isDefined
+          this.difficulty = loadedDifficulty
 
           loadedHumanColor match {
             case Some(color) =>
