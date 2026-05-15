@@ -429,9 +429,12 @@ class GameController {
         stopTimer()
         statusLabel.setText(s"Undo efetuado. Turno: ${if (currentPlayer == Stone.Black) "PRETO" else "BRANCO"}")
         if (!isGameOver && currentPlayer == computerColor) {
-          val delay = new javafx.animation.Timeline(
+          val delay = new Timeline(
             new javafx.animation.KeyFrame(javafx.util.Duration.millis(1000), (_: ActionEvent) => {
               if (!isGameOver && isComputerTurn && !processingMove) {
+                // Avança a semente para evitar repetição do mesmo movimento
+                val (_, nextRand) = rand.nextInt(2)
+                rand = nextRand
                 computerMove()
               }
             })
