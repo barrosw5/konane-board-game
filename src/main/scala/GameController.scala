@@ -9,7 +9,7 @@ import javafx.scene.{Node, Parent, Scene}
 import javafx.stage.Stage
 import javafx.animation.{Timeline,KeyFrame}
 import javafx.util.Duration
-
+import java.io.PrintWriter
 import scala.annotation.tailrec
 
 class GameController {
@@ -50,6 +50,7 @@ class GameController {
   private var initialTimeLimitMs: Long = _
   private var initialHumanColorOpt: Option[Stone] = _
   private var initialDifficulty: Int = _
+  private var currentHole: HolePosition = _
 
 
 
@@ -65,6 +66,7 @@ class GameController {
     this.initialTimeLimitMs = timeLimitMs
     this.initialHumanColorOpt = humanColorOpt
     this.initialDifficulty = difficulty
+    this.currentHole = hole
 
     if (isPvP) {
       // Modo dois humanos: cores fixas (Pretas vs Brancas), computador nunca joga
@@ -331,10 +333,12 @@ class GameController {
       rand = rand,
       humanColor = humanColorOpt,
       selected = selected,
-      difficulty = difficulty
+      difficulty = difficulty,
+      history = history,
+      hole = currentHole
     )
     try {
-      val pw = new java.io.PrintWriter(new java.io.File("savegame.txt"))
+      val pw = new PrintWriter(new java.io.File("savegame.txt"))
       pw.write(data)
       pw.close()
       statusLabel.setText("Jogo guardado em savegame.txt")
@@ -362,7 +366,7 @@ class GameController {
       source.close()
 
       SaveLoadLogic.loadGameState(content) match {
-        case Some((loadedBoard, loadedSize, loadedPlayer, loadedTimeLimit, loadedOpenCoords, loadedRand, loadedHumanColor, loadedSelected, loadedDifficulty)) =>
+        case Some((loadedBoard, loadedSize, loadedPlayer, loadedTimeLimit, loadedOpenCoords, loadedRand, loadedHumanColor, loadedSelected, loadedDifficulty,loadedHistory,loadedHole)) =>
           // Atualiza o estado do jogo
           this.board = loadedBoard
           this.size = loadedSize
@@ -375,6 +379,13 @@ class GameController {
           this.selected = loadedSelected
           this.isInJump = loadedSelected.isDefined
           this.difficulty = loadedDifficulty
+          this.history = loadedHistory
+          this.currentHole = loadedHole
+          this.initialSize = loadedSize
+          this.initialHole = loadedHole
+          this.initialTimeLimitMs = loadedTimeLimit
+          this.initialHumanColorOpt = loadedHumanColor
+          this.initialDifficulty = loadedDifficulty
 
           loadedHumanColor match {
             case Some(color) =>
@@ -385,7 +396,6 @@ class GameController {
               this.isPvP = true// modo PvP
           }
 
-          this.history = Nil
 
           render()
           checkGameOver()

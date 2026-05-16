@@ -1,3 +1,5 @@
+import HolePosition.Center
+
 import scala.annotation.tailrec
 
 object Main extends App {
@@ -53,7 +55,7 @@ object Main extends App {
                 fileContentOpt match {
                     case Some(fileContent) =>
                         SaveLoadLogic.loadGameState(fileContent) match {
-                            case Some((loadedBoard, loadedSize, loadedPlayer, loadedLimit, loadedOpenCoords, loadedRand, loadedHumanColor, _, _)) =>
+                            case Some((loadedBoard, loadedSize, loadedPlayer, loadedLimit, loadedOpenCoords, loadedRand, loadedHumanColor, _, _,_,_)) =>
                                 println("\n=== Game Loaded Successfully! ===")
                                 val diff = if (loadedHumanColor.isDefined) difficultyChoiceLoop() else 1
                                 val finalRand = gameLoop(loadedBoard, loadedSize, loadedRand, loadedOpenCoords, loadedPlayer, loadedLimit, Nil, loadedHumanColor, diff)
@@ -303,7 +305,7 @@ object Main extends App {
                             }
 
                         case "S" =>
-                            val fileData = SaveLoadLogic.saveGameState(board, size, currentPlayer, timeLimit, openCoords, rand, humanColor, None, difficulty)
+                            val fileData = SaveLoadLogic.saveGameState(board, size, currentPlayer, timeLimit, openCoords, rand, humanColor, None, difficulty,Nil,Center)
                             try {
                                 val pw = new java.io.PrintWriter(new java.io.File("savegame.txt"))
                                 pw.write(fileData)
