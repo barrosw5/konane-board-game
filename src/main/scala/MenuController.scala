@@ -10,6 +10,8 @@ class MenuController {
   @FXML private var timeLimitField: TextField = _
   @FXML private var colorComboBox: ComboBox[String] = _
   @FXML private var sizeComboBox: ComboBox[String] = _
+  @FXML private var difficultyComboBox: ComboBox[String] = _
+
 
 
   @FXML
@@ -26,6 +28,9 @@ class MenuController {
 
     sizeComboBox.getItems.addAll("4", "6", "8", "10")
     sizeComboBox.getSelectionModel.selectFirst()
+
+    difficultyComboBox.getItems.addAll("Fácil", "Intermédio", "Avançado")
+    difficultyComboBox.getSelectionModel.selectFirst()
 
     colorComboBox.getItems.addAll(
       "Jogar com Pretas",
@@ -51,14 +56,22 @@ class MenuController {
     }
   }
 
+  private def getDifficulty(): Int = {
+    difficultyComboBox.getValue match {
+      case "Fácil" => 0
+      case "Intermédio" => 1
+      case "Avançado" => 2
+      case _ => 0
+    }
+  }
+
   // Carrega a vista do jogo e passa o tamanho do tabuleiro
   private def loadGame(size: Int, event: ActionEvent): Unit = {
     val loader = new FXMLLoader(getClass.getResource("Game.fxml"))
     val root: Parent = loader.load()
 
     val controller = loader.getController[GameController]()
-    controller.initGame(size, getSelectedHole(), getTimeLimit(),getHumanColor())
-
+    controller.initGame(size, getSelectedHole(), getTimeLimit(), getHumanColor(), getDifficulty())
     val stage = event.getSource.asInstanceOf[Node].getScene.getWindow.asInstanceOf[Stage]
     stage.setScene(new Scene(root))
   }

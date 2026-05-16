@@ -5,7 +5,7 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.text.*?>
 
-<VBox alignment="CENTER" prefHeight="400.0" prefWidth="600.0" spacing="20.0" style="-fx-background-color: #3e2723;" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="MenuController">
+<VBox alignment="CENTER" prefHeight="500.0" prefWidth="600.0" spacing="15.0" style="-fx-background-color: #3e2723;" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="MenuController">
     <children>
         <Label text="KONANE" textFill="WHITE">
             <font>
@@ -13,46 +13,30 @@
             </font>
         </Label>
 
-        <Label text="Escolha a posição inicial (Buraco):" textFill="WHITE" />
-        <ComboBox fx:id="holeComboBox" prefWidth="200.0" />
+        <Label text="Posição das peças removidas:" textFill="WHITE" />
+        <ComboBox fx:id="holeComboBox" prefWidth="200.0" style="-fx-text-fill: white;" />
 
-        <Label text="Tempo limite por jogada (segundos):" textFill="WHITE">
-            <VBox.margin>
-                <Insets top="15.0" />
-            </VBox.margin>
-        </Label>
-        <HBox alignment="CENTER">
-            <Label text="Modo de Jogo:" textFill="WHITE">
-                <VBox.margin>
-                    <Insets top="15.0" />
-                </VBox.margin>
-            </Label>
+        <Label text="Modo de Jogo:" textFill="WHITE" />
+        <ComboBox fx:id="colorComboBox" prefWidth="200.0" style="-fx-text-fill: white;" />
+
+        <Label text="Tempo limite por jogada (segundos):" textFill="WHITE" />
+        <HBox alignment="CENTER" spacing="10.0">
+            <TextField fx:id="timeLimitField" prefWidth="80.0" promptText="30"
+                       style="-fx-background-color: #5d4037; -fx-text-fill: white; -fx-prompt-text-fill: #b0a790; -fx-focus-color: #ffb300;" />
         </HBox>
-            <ComboBox fx:id="colorComboBox" prefWidth="200.0" />
 
-            <TextField fx:id="timeLimitField" prefWidth="60.0" promptText="30" />
-            <Label text=" segundos" textFill="WHITE">
-                <HBox.margin>
-                    <Insets left="5.0" />
-                </HBox.margin>
-            </Label>
+        <Label text="Dificuldade do computador:" textFill="WHITE" />
+        <ComboBox fx:id="difficultyComboBox" prefWidth="200.0" style="-fx-text-fill: white; -fx-opacity: 1.0;" />
 
-
-        <Label text="Escolha o tamanho do tabuleiro:" textFill="WHITE">
-            <VBox.margin>
-                <Insets top="15.0" />
-            </VBox.margin>
-        </Label>
+        <Label text="Escolha o tamanho do tabuleiro:" textFill="WHITE" />
         <ComboBox fx:id="sizeComboBox" prefWidth="150.0" style="-fx-text-fill: white;" />
+
         <HBox alignment="CENTER" spacing="20.0">
-            <Button onAction="#onStartGame" prefWidth="150.0" style="-fx-background-color: #FFB300; -fx-text-fill: #2C1A0E;" text="Novo Jogo">
-            <HBox.margin>
-               <Insets bottom="15.0" />
-            </HBox.margin></Button>
-            <Button onAction="#onLoadGame" prefWidth="150.0" style="-fx-background-color: #5D4037; -fx-text-fill: #FFB300;" text="Carregar Jogo">
-            <HBox.margin>
-               <Insets bottom="15.0" />
-            </HBox.margin></Button>
+            <Button onAction="#onStartGame" prefWidth="150.0" style="-fx-background-color: #FFB300; -fx-text-fill: #2C1A0E;" text="Novo Jogo" />
+            <Button onAction="#onLoadGame" prefWidth="150.0" style="-fx-background-color: #5D4037; -fx-text-fill: #FFB300;" text="Carregar Jogo" />
         </HBox>
     </children>
+    <padding>
+        <Insets bottom="30.0" left="30.0" right="30.0" top="30.0" />
+    </padding>
 </VBox>

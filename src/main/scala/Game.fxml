@@ -34,6 +34,7 @@
             <children>
                 <Button onAction="#onSave" text="Save" />
                 <Button onAction="#onUndo" text="Undo" />
+                <Button onAction="#onRestart" text="Reiniciar" />
                 <Button onAction="#onBackToMenu" text="Sair para o Menu" />
             </children>
             <BorderPane.margin>

@@ -9,7 +9,7 @@ import javafx.scene.{Node, Parent, Scene}
 import javafx.stage.Stage
 import javafx.animation.{Timeline,KeyFrame}
 import javafx.util.Duration
-
+import java.io.PrintWriter
 import scala.annotation.tailrec
 
 class GameController {
@@ -42,13 +42,31 @@ class GameController {
   private def isHumanTurn: Boolean = if (isPvP) true else currentPlayer == humanColor
   private def isComputerTurn: Boolean = !isPvP && currentPlayer == computerColor
 
+  private var difficulty : Int = 0
+
+  // Para o restart
+  private var initialSize: Int = _
+  private var initialHole: HolePosition = _
+  private var initialTimeLimitMs: Long = _
+  private var initialHumanColorOpt: Option[Stone] = _
+  private var initialDifficulty: Int = _
+  private var currentHole: HolePosition = _
 
 
-  def initGame(boardSize: Int, hole: HolePosition, timeLimitMs: Long, humanColorOpt : Option[Stone]): Unit = {
+
+  def initGame(boardSize: Int, hole: HolePosition, timeLimitMs: Long, humanColorOpt : Option[Stone], difficulty: Int): Unit = {
     this.size = boardSize
     this.board = GameLogic.initBoard(size, hole)
     this.timeLimitMs = timeLimitMs
     this.isPvP = humanColorOpt.isEmpty
+    this.difficulty = difficulty
+
+    this.initialSize = boardSize
+    this.initialHole = hole
+    this.initialTimeLimitMs = timeLimitMs
+    this.initialHumanColorOpt = humanColorOpt
+    this.initialDifficulty = difficulty
+    this.currentHole = hole
 
     if (isPvP) {
       // Modo dois humanos: cores fixas (Pretas vs Brancas), computador nunca joga
@@ -113,6 +131,19 @@ class GameController {
     computerDelay = Some(delay)
   }
 
+  private def computerMoveLogic(): (Option[Board], MyRandom, List[Coord2D], Option[Coord2D]) = {
+    difficulty match {
+      case 0 => // Fácil
+        GameLogic.playRandomly(board, rand, currentPlayer, openCoords, GameLogic.randomMove)
+      case 1 => // Intermédio
+        AILogic.playIntermediate(board, rand, currentPlayer, size, openCoords)
+      case 2 => // Avançado
+        AILogic.playAdvanced(board, rand, currentPlayer, size, openCoords)
+      case _ => // fallback
+        GameLogic.playRandomly(board, rand, currentPlayer, openCoords, GameLogic.randomMove)
+    }
+  }
+
   private def doComputerMove(): Unit = {
     if (isGameOver) {
       processingMove = false
@@ -122,8 +153,7 @@ class GameController {
     pushHistory()
 
     val (newBoardOpt, newRand, newOpen, _) =
-      GameLogic.playRandomly(board, rand, currentPlayer, openCoords, GameLogic.randomMove)
-
+      computerMoveLogic()
     newBoardOpt match {
       case Some(newBoard) =>
         board = newBoard
@@ -302,10 +332,13 @@ class GameController {
       openCoords = openCoords,
       rand = rand,
       humanColor = humanColorOpt,
-      selected = selected
+      selected = selected,
+      difficulty = difficulty,
+      history = history,
+      hole = currentHole
     )
     try {
-      val pw = new java.io.PrintWriter(new java.io.File("savegame.txt"))
+      val pw = new PrintWriter(new java.io.File("savegame.txt"))
       pw.write(data)
       pw.close()
       statusLabel.setText("Jogo guardado em savegame.txt")
@@ -333,7 +366,7 @@ class GameController {
       source.close()
 
       SaveLoadLogic.loadGameState(content) match {
-        case Some((loadedBoard, loadedSize, loadedPlayer, loadedTimeLimit, loadedOpenCoords, loadedRand, loadedHumanColor, loadedSelected)) =>
+        case Some((loadedBoard, loadedSize, loadedPlayer, loadedTimeLimit, loadedOpenCoords, loadedRand, loadedHumanColor, loadedSelected, loadedDifficulty,loadedHistory,loadedHole)) =>
           // Atualiza o estado do jogo
           this.board = loadedBoard
           this.size = loadedSize
@@ -345,6 +378,14 @@ class GameController {
           this.processingMove = false
           this.selected = loadedSelected
           this.isInJump = loadedSelected.isDefined
+          this.difficulty = loadedDifficulty
+          this.history = loadedHistory
+          this.currentHole = loadedHole
+          this.initialSize = loadedSize
+          this.initialHole = loadedHole
+          this.initialTimeLimitMs = loadedTimeLimit
+          this.initialHumanColorOpt = loadedHumanColor
+          this.initialDifficulty = loadedDifficulty
 
           loadedHumanColor match {
             case Some(color) =>
@@ -355,7 +396,6 @@ class GameController {
               this.isPvP = true// modo PvP
           }
 
-          this.history = Nil
 
           render()
           checkGameOver()
@@ -412,9 +452,12 @@ class GameController {
         stopTimer()
         statusLabel.setText(s"Undo efetuado. Turno: ${if (currentPlayer == Stone.Black) "PRETO" else "BRANCO"}")
         if (!isGameOver && currentPlayer == computerColor) {
-          val delay = new javafx.animation.Timeline(
+          val delay = new Timeline(
             new javafx.animation.KeyFrame(javafx.util.Duration.millis(1000), (_: ActionEvent) => {
               if (!isGameOver && isComputerTurn && !processingMove) {
+                // Avança a semente para evitar repetição do mesmo movimento
+                val (_, nextRand) = rand.nextInt(2)
+                rand = nextRand
                 computerMove()
               }
             })
@@ -476,5 +519,15 @@ class GameController {
     statusLabel.setText(s"TEMPO ESGOTADO! $winner venceu!")
     statusLabel.setTextFill(Color.RED)
     stopTimer()
+  }
+
+  @FXML def onRestart(event: ActionEvent): Unit = {
+    computerDelay.foreach(_.stop())
+    computerDelay = None
+    stopTimer()
+    processingMove = false
+
+    // Reiniciar com as mesmas settings
+    initGame(initialSize, initialHole, initialTimeLimitMs, initialHumanColorOpt, initialDifficulty)
   }
 }
