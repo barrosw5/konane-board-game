@@ -44,6 +44,13 @@ class GameController {
 
   private var difficulty : Int = 0
 
+  // Para o restart
+  private var initialSize: Int = _
+  private var initialHole: HolePosition = _
+  private var initialTimeLimitMs: Long = _
+  private var initialHumanColorOpt: Option[Stone] = _
+  private var initialDifficulty: Int = _
+
 
 
   def initGame(boardSize: Int, hole: HolePosition, timeLimitMs: Long, humanColorOpt : Option[Stone], difficulty: Int): Unit = {
@@ -52,6 +59,12 @@ class GameController {
     this.timeLimitMs = timeLimitMs
     this.isPvP = humanColorOpt.isEmpty
     this.difficulty = difficulty
+
+    this.initialSize = boardSize
+    this.initialHole = hole
+    this.initialTimeLimitMs = timeLimitMs
+    this.initialHumanColorOpt = humanColorOpt
+    this.initialDifficulty = difficulty
 
     if (isPvP) {
       // Modo dois humanos: cores fixas (Pretas vs Brancas), computador nunca joga
@@ -496,5 +509,15 @@ class GameController {
     statusLabel.setText(s"TEMPO ESGOTADO! $winner venceu!")
     statusLabel.setTextFill(Color.RED)
     stopTimer()
+  }
+
+  @FXML def onRestart(event: ActionEvent): Unit = {
+    computerDelay.foreach(_.stop())
+    computerDelay = None
+    stopTimer()
+    processingMove = false
+
+    // Reiniciar com as mesmas settings
+    initGame(initialSize, initialHole, initialTimeLimitMs, initialHumanColorOpt, initialDifficulty)
   }
 }
