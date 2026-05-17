@@ -259,7 +259,12 @@ class GameController {
 
       case Some(from) =>
         if (from == clicked) {
-          finishHumanTurn()
+          if(isInJump){
+            finishHumanTurn()
+          } else{
+            selected = None
+            render()
+          }
         } else {
           val moves = GameLogic.getValidMovesForPiece(board, from, size)
           if (moves.contains(clicked)) {
@@ -451,9 +456,13 @@ class GameController {
         checkGameOver()
         stopTimer()
         statusLabel.setText(s"Undo efetuado. Turno: ${if (currentPlayer == Stone.Black) "PRETO" else "BRANCO"}")
-        if (!isGameOver && currentPlayer == computerColor) {
+
+        if(!isGameOver && isHumanTurn)
+          startTimerIfHumanTurn()
+
+        if (!isGameOver && isComputerTurn) {
           val delay = new Timeline(
-            new javafx.animation.KeyFrame(javafx.util.Duration.millis(1000), (_: ActionEvent) => {
+            new KeyFrame(javafx.util.Duration.millis(1000), (_: ActionEvent) => {
               if (!isGameOver && isComputerTurn && !processingMove) {
                 // Avança a semente para evitar repetição do mesmo movimento
                 val (_, nextRand) = rand.nextInt(2)
