@@ -13,3 +13,5 @@ libraryDependencies += "org.openjfx" % "javafx-base" % "21.0.2"
 libraryDependencies += "org.openjfx" % "javafx-controls" % "21.0.2"
 libraryDependencies += "org.openjfx" % "javafx-fxml" % "21.0.2"
 libraryDependencies += "org.openjfx" % "javafx-graphics" % "21.0.2"
+
+Compile / unmanagedResources ++= ((Compile / scalaSource).value ** "*.fxml").get
